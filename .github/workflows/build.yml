@@ -1,0 +1,58 @@
+# 工作流的名称
+name: Auto Build
+
+# 触发工作流的事件
+on:
+  # 1. 当有代码推送到 main 或 master 分支时触发
+  push:
+    branches: [ "main", "master" ]
+
+  # 2. 当有针对 main 或 master 分支的 Pull Request 时触发
+  pull_request:
+    branches: [ "main", "master" ]
+
+  # 3. 允许您在 GitHub Actions 页面手动触发此工作流
+  workflow_dispatch:
+
+# 定义工作任务
+jobs:
+  # 任务ID，可以自定义
+  build:
+    # 指定运行此任务的虚拟机环境
+    runs-on: ubuntu-latest
+
+    # 任务执行的步骤
+    steps:
+      # 步骤 1: 检出您的代码
+      # 使用 action 'actions/checkout' 来获取仓库的源代码
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 步骤 2: 设置 Java 环境
+      # 您的 build.gradle 指定了 Java 21，所以这里也必须使用 Java 21
+      - name: 设置 JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin' # 一个流行的 OpenJDK 发行版
+
+      # 步骤 3: 赋予 gradlew 执行权限
+      # 这是一个好习惯，可以防止因文件权限问题导致的构建失败
+      - name: 赋予 gradlew 执行权限
+        run: chmod +x ./gradlew
+
+      # 步骤 4: 使用 Gradle 构建项目
+      # gradle build 命令会编译代码、运行测试并打包成 JAR 文件
+      # GITHUB_RUN_NUMBER 环境变量会在这里被自动注入
+      - name: 使用 Gradle 构建
+        run: ./gradlew build
+
+      # 步骤 5: 上传构建产物 (Artifact)
+      # 将构建生成的 JAR 文件保存起来，以便下载
+      - name: uploadJar
+        uses: actions/upload-artifact@v4
+        with:
+          # 上传的产物包名称
+          name: BiliBiliLink-Plugin
+          # 要上传的文件的路径，使用通配符匹配 build/libs 目录下的所有 .jar 文件
+          path: build/libs/*.jar
