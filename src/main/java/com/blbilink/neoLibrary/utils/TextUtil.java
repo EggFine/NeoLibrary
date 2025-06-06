@@ -93,7 +93,6 @@ public class TextUtil {
 
     /**
      * 组装完整的 Logo 信息，包括 ASCII Art、版本号、作者等。
-     * 此版本使用 StringBuilder 进行高效的字符串构建，并自动居中文本。
      *
      * @param str        状态字符串，如 "Enabled"。
      * @param logoText   用于生成 ASCII Art 的核心文本。
@@ -111,24 +110,24 @@ public class TextUtil {
 
         // 版本与状态信息
         String version = plugin.getDescription().getVersion();
-        String versionLine = "Version: " + (version != null ? version : "N/A") + " | Status: " + (str != null ? str : "OK");
-        logoBuilder.append(centerText(versionLine, CONSOLE_WIDTH)).append("\n");
+        String versionLine = "版本: " + (version != null ? version : "N/A") + " | 状态: " + AnsiColor.GREEN + (str != null ? str : "OK") + AnsiColor.RESET;
+        logoBuilder.append(versionLine).append("\n");
 
         // 副标题
         if (subTitle != null && !subTitle.isEmpty()) {
-            logoBuilder.append(centerText(subTitle, CONSOLE_WIDTH)).append("\n");
+            logoBuilder.append(subTitle).append("\n");
         }
 
         logoBuilder.append("\n"); // 添加一些间距
 
         // 开发者信息
         if (mainAuthor != null && !mainAuthor.isEmpty()) {
-            String authorLine = "Main Author(s): " + String.join(", ", mainAuthor);
-            logoBuilder.append(centerText(authorLine, CONSOLE_WIDTH)).append("\n");
+            String authorLine = "主要开发者: " + String.join(", ", mainAuthor);
+            logoBuilder.append(authorLine).append("\n");
         }
         if (subAuthor != null && !subAuthor.isEmpty()) {
-            String authorLine = "Sub Author(s): " + String.join(", ", subAuthor);
-            logoBuilder.append(centerText(authorLine, CONSOLE_WIDTH)).append("\n");
+            String authorLine = "次要开发者: " + String.join(", ", subAuthor);
+            logoBuilder.append(authorLine).append("\n");
         }
 
         logoBuilder.append("\n\n\n");
@@ -165,7 +164,7 @@ public class TextUtil {
         if (padding <= 0) {
             return text;
         }
-        // 使用 Java 11 的 String.repeat() 会更简洁，但为了兼容性使用循环
+
         StringBuilder sb = new StringBuilder(padding + text.length());
         for (int i = 0; i < padding; i++) {
             sb.append(' ');

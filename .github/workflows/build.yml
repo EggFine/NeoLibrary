@@ -50,6 +50,10 @@ jobs:
         id: get_version
         run: echo "VERSION=$(./gradlew -q properties | grep "^version:" | cut -d' ' -f2)" >> $GITHUB_OUTPUT
 
+      - name: 收集 Commit 訊息
+        id: get_commits
+        run: echo "MESSAGES=$(git log --format='- %s' ${{ github.event.before }}..${{ github.event.after }})" >> $GITHUB_OUTPUT
+
       # 步驟 6: 上傳建置產物 (Artifact)
       - name: 上傳建置產物 (Artifact)
         uses: actions/upload-artifact@v4
@@ -62,6 +66,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          tag_name: Release ${{ steps.get_version.outputs.VERSION }}
           generate_release_notes: true
+          body: ${{ steps.get_commits.outputs.MESSAGES }}
           files: build/libs/*.jar
