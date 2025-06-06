@@ -66,7 +66,7 @@ public class AnsiColor {
      */
     public static final String GOLD = "\u001B[33m";
     /**
-     * 将文字颜色设置为灰色（在某些终端中可能显示为浅灰或白色）。
+     * 将文字颜色设置为灰色。
      */
     public static final String GRAY = "\u001B[37m";
 
