@@ -1,58 +1,67 @@
-# 工作流的名称
-name: Auto Build
+# 工作流的名稱
+name: Auto Build and Release
 
-# 触发工作流的事件
+# 觸發工作流的事件
 on:
-  # 1. 当有代码推送到 main 或 master 分支时触发
+  # 1. 當有程式碼推送到 main 分支時觸發
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
 
-  # 2. 当有针对 main 或 master 分支的 Pull Request 时触发
-  pull_request:
-    branches: [ "main", "master" ]
-
-  # 3. 允许您在 GitHub Actions 页面手动触发此工作流
+  # 2. 允許您在 GitHub Actions 頁面手動觸發此工作流
   workflow_dispatch:
 
-# 定义工作任务
+# 賦予工作流寫入權限，以便建立 Release 和 Tag
+permissions:
+  contents: write
+
+# 定義工作任務
 jobs:
-  # 任务ID，可以自定义
-  build:
-    # 指定运行此任务的虚拟机环境
+  # 任務ID，可以自定義
+  build-and-release:
+    # 指定運行此任務的虛擬機環境
     runs-on: ubuntu-latest
 
-    # 任务执行的步骤
+    # 任務執行的步驟
     steps:
-      # 步骤 1: 检出您的代码
-      # 使用 action 'actions/checkout' 来获取仓库的源代码
-      - name: 检出代码
+      # 步驟 1: 檢出您的程式碼
+      - name: 檢出程式碼
+        # 需要設定 fetch-depth: 0 才能獲取所有歷史紀錄以生成日誌
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # 步骤 2: 设置 Java 环境
-      # 您的 build.gradle 指定了 Java 21，所以这里也必须使用 Java 21
-      - name: 设置 JDK 21
+      # 步驟 2: 設定 Java 環境
+      - name: 設定 JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin' # 一个流行的 OpenJDK 发行版
+          distribution: 'temurin'
 
-      # 步骤 3: 赋予 gradlew 执行权限
-      # 这是一个好习惯，可以防止因文件权限问题导致的构建失败
-      - name: 赋予 gradlew 执行权限
+      # 步驟 3: 賦予 gradlew 執行權限
+      - name: 賦予 gradlew 執行權限
         run: chmod +x ./gradlew
 
-      # 步骤 4: 使用 Gradle 构建项目
-      # gradle build 命令会编译代码、运行测试并打包成 JAR 文件
-      # GITHUB_RUN_NUMBER 环境变量会在这里被自动注入
-      - name: 使用 Gradle 构建
+      # 步驟 4: 使用 Gradle 建置專案
+      - name: 使用 Gradle 建置
         run: ./gradlew build
 
-      # 步骤 5: 上传构建产物 (Artifact)
-      # 将构建生成的 JAR 文件保存起来，以便下载
-      - name: uploadJar
+      # 步驟 5: 取得專案版本號
+      - name: 取得專案版本
+        id: get_version
+        run: echo "VERSION=$(./gradlew -q properties | grep "^version:" | cut -d' ' -f2)" >> $GITHUB_OUTPUT
+
+      # 步驟 6: 上傳建置產物 (Artifact)
+      - name: 上傳建置產物 (Artifact)
         uses: actions/upload-artifact@v4
         with:
-          # 上传的产物包名称
-          name: BiliBiliLink-Plugin
-          # 要上传的文件的路径，使用通配符匹配 build/libs 目录下的所有 .jar 文件
+          name: NeoLibrary-${{ steps.get_version.outputs.VERSION }}
           path: build/libs/*.jar
+
+      # 步驟 7: 建立並發布 Release
+      - name: 自動建立 Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          generate_release_notes: true
+          files: build/libs/*.jar

@@ -6,7 +6,7 @@ plugins {
 group = 'com.blbilink'
 
 
-def baseVersion = "1.0.0"
+def baseVersion = "1.21.5"
 // 从环境变量读取 CI 提供的构建号
 def buildNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "SNAPSHOT"
 version = "${baseVersion}.${buildNumber}"
