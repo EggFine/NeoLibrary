@@ -17,8 +17,6 @@ import java.util.stream.Stream;
 public class TextUtil {
     // 每个字符的固定高度（行数）
     private static final int CHAR_HEIGHT = 4;
-    // Logo 输出的默认控制台宽度，用于文本居中
-    private static final int CONSOLE_WIDTH = 80;
 
     // 使用更简洁的 Map<Character, String[]> 结构存储字符数据
     private static final Map<Character, String[]> ASCII_ART;
@@ -146,30 +144,6 @@ public class TextUtil {
             i--;
         }
         sb.setLength(i + 1);
-        return sb.toString();
-    }
-
-    /**
-     * 辅助方法：在指定宽度内居中显示文本。
-     *
-     * @param text  要居中的文本。
-     * @param width 总宽度。
-     * @return 带前导空格的居中字符串。
-     */
-    private static String centerText(String text, int width) {
-        if (text == null || text.length() >= width) {
-            return text;
-        }
-        int padding = (width - text.length()) / 2;
-        if (padding <= 0) {
-            return text;
-        }
-
-        StringBuilder sb = new StringBuilder(padding + text.length());
-        for (int i = 0; i < padding; i++) {
-            sb.append(' ');
-        }
-        sb.append(text);
         return sb.toString();
     }
 }
