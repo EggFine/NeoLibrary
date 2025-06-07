@@ -65,7 +65,7 @@ jobs:
         with:
           name: ${{ steps.get_version.outputs.VERSION }}
           # 使用版本号作为 Tag 名称
-          tag_name: 1.21.5
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
           # 自动生成 Release Notes，内容会包含本次发布的所有提交记录
           generate_release_notes: true
           # 将构建出的 jar 文件作为附件上传
