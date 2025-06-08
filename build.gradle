@@ -1,15 +1,17 @@
 plugins {
     id 'java'
     id("xyz.jpenilla.run-paper") version "2.3.1"
+    // 1. 添加 Shadow 插件，用于打包和重定位依赖
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'com.blbilink'
-
 
 def baseVersion = "1.21.5"
 // 从环境变量读取 CI 提供的构建号
 def buildNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "SNAPSHOT"
 version = "${baseVersion}.${buildNumber}"
+
 
 repositories {
     mavenCentral()
@@ -30,11 +32,13 @@ repositories {
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.21.5-R0.1-SNAPSHOT")
     compileOnly "dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT"
+    
+    implementation 'com.zaxxer:HikariCP:5.1.0'
 }
 
 tasks {
     runServer {
-        
+
     }
 }
 
@@ -63,4 +67,18 @@ processResources {
     filesMatching('plugin.yml') {
         expand props
     }
+}
+
+// 3. 配置 ShadowJar 任务
+shadowJar {
+    // 将 HikariCP 的包重定位到包路径下，防止冲突
+    relocate 'com.zaxxer.hikari', 'com.blbilink.neoLibrary.lib.hikaricp'
+    
+    // 不生成带有 'all' 或 'shadow' 后缀的 jar 文件，而是直接覆盖默认的 jar
+    archiveClassifier.set('')
+}
+
+
+tasks.build {
+    dependsOn(shadowJar)
 }
