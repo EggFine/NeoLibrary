@@ -2,7 +2,7 @@ plugins {
     id 'java'
     id("xyz.jpenilla.run-paper") version "2.3.1"
     // 1. 添加 Shadow 插件，用于打包和重定位依赖
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'com.gradleup.shadow' version '8.3.6'
 }
 
 group = 'com.blbilink'
@@ -71,10 +71,7 @@ processResources {
 
 // 3. 配置 ShadowJar 任务
 shadowJar {
-    // 将 HikariCP 的包重定位到包路径下，防止冲突
     relocate 'com.zaxxer.hikari', 'com.blbilink.neoLibrary.lib.hikaricp'
-    
-    // 不生成带有 'all' 或 'shadow' 后缀的 jar 文件，而是直接覆盖默认的 jar
     archiveClassifier.set('')
 }
 

@@ -37,9 +37,6 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: 设置 Gradle
-        uses: gradle/actions/setup-gradle@v3
-
       # 步骤 3: 赋予 gradlew 执行权限
       - name: 赋予 gradlew 执行权限
         run: chmod +x ./gradlew
