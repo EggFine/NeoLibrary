@@ -61,12 +61,11 @@ jobs:
       - name: 自动创建 Release
         # 仅在推送到 main 分支时执行
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2.3.0
+        uses: ncipollo/release-action@v1 # <-- 使用 ncipollo/release-action
         with:
+          # GITHUB_TOKEN 会被自动使用，无需手动指定
+          # token: ${{ secrets.GITHUB_TOKEN }}
           name: ${{ steps.get_version.outputs.VERSION }}
-          # 使用版本号作为 Tag 名称
-          tag_name: ${{ steps.get_version.outputs.VERSION }}
-          # 自动生成 Release Notes，内容会包含本次发布的所有提交记录
-          generate_release_notes: true
-          # 将构建出的 jar 文件作为附件上传
-          files: build/libs/*.jar
+          tag: ${{ steps.get_version.outputs.VERSION }} # 注意这里参数名是 tag
+          generateReleaseNotes: true # 注意这里的驼峰命名
+          artifacts: build/libs/*.jar # 注意这里参数名是 artifacts
