@@ -61,7 +61,7 @@ jobs:
       - name: 自动创建 Release
         # 仅在推送到 main 分支时执行
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.3.0
         with:
           name: ${{ steps.get_version.outputs.VERSION }}
           # 使用版本号作为 Tag 名称
