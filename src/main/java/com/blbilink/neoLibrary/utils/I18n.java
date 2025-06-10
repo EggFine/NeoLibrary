@@ -118,7 +118,7 @@ public class I18n {
                 plugin.saveResource(resourcePath, false);
             } else {
                 // 如果指定的语言在 jar 中不存在，回退到默认语言
-                plugin.getLogger().warning("Specified language file '" + languageName + ".yml' not found in plugin resources. Falling back to default '" + DEFAULT_LANGUAGE + ".yml'.");
+                plugin.getLogger().warning("指定的语言文件 '" + languageName + ".yml' 在插件资源中不存在. 回退到默认语言 '" + DEFAULT_LANGUAGE + ".yml'。");
                 this.languageName = DEFAULT_LANGUAGE;
                 resourcePath = LANGUAGE_FOLDER_PATH + "/" + DEFAULT_LANGUAGE + ".yml";
                 languageFile = new File(languageFolder, this.languageName + ".yml");
@@ -149,7 +149,7 @@ public class I18n {
         FileConfiguration cnLangConfig = loadConfigFromResource(defaultLangResourcePath);
 
         if (newLangConfig == null || cnLangConfig == null) {
-            plugin.getLogger().warning("Could not load language configurations from plugin resources for version checking.");
+            plugin.getLogger().warning("无法加载语言配置文件，因此无法进行语言配置文件版本检查。");
             return;
         }
 
@@ -157,13 +157,13 @@ public class I18n {
         String newVersion = newLangConfig.getString("version", "0.0");
         String cnVersion = cnLangConfig.getString("version", "0.0");
 
-        plugin.getLogger().info("Current language file version: " + localVersion);
-        plugin.getLogger().info("Latest '" + languageName + "' version in plugin: " + newVersion);
-        plugin.getLogger().info("Latest '" + DEFAULT_LANGUAGE + "' version in plugin: " + cnVersion);
+        plugin.getLogger().info("[#] 当前语言 " + languageName + " 版本: " + localVersion + AnsiColor.RESET);
+        plugin.getLogger().info("[#] 最新语言 " + languageName + " 版本: " + newVersion + AnsiColor.RESET);
+        plugin.getLogger().info("[#] 最新默认语言 " + DEFAULT_LANGUAGE + " 版本: " + cnVersion + AnsiColor.RESET);
 
         // 检查当前语言文件是否有新版本
         if (YmlUtil.isVersionNewer(newVersion, localVersion)) {
-            plugin.getLogger().warning("New version of your language file detected. Updating...");
+            plugin.getLogger().info(AnsiColor.AQUA + "检测到语言文件有新版本. 正在更新..." + AnsiColor.RESET);
             FileUtil.completeLangFile(plugin, false, currentLangResourcePath);
             // 更新后重新加载文件内容
             this.language = YamlConfiguration.loadConfiguration(languageFile);
@@ -174,7 +174,7 @@ public class I18n {
                 plugin.getLogger().log(Level.SEVERE, "Could not save updated version to language file: " + languageFile.getName(), e);
             }
         } else {
-            plugin.getLogger().info(AnsiColor.AQUA + "[√] Your language file is up to date." + AnsiColor.RESET);
+            plugin.getLogger().info(AnsiColor.AQUA + "[√] 您当前正在使用的语言文件是最新版本。" + AnsiColor.RESET);
         }
 
         // 检查中文文件是否比当前文件新，如果是，则同步缺失的键

@@ -51,7 +51,7 @@ public class ConfigUtil {
         // 3. 从 jar 中加载最新的配置文件以进行版本比较
         FileConfiguration sourceConfig = loadConfigFromResource();
         if (sourceConfig == null) {
-            plugin.getLogger().warning("Resource file '" + configName + "' not found in plugin jar. Skipping version check.");
+            plugin.getLogger().warning("配置文件 '" + configName + "' 在插件 jar 中不存在. 跳过版本检查。");
             return;
         }
 
@@ -59,7 +59,7 @@ public class ConfigUtil {
         String localVersion = config.getString("version", "0.0");
         String sourceVersion = sourceConfig.getString("version", "0.0");
 
-        plugin.getLogger().info(String.format("[%s] Local version: %s, Latest version: %s", configName, localVersion, sourceVersion));
+        plugin.getLogger().info(String.format("[%s] 当前配置文件版本: %s, 最新配置文件版本: %s", configName, localVersion, sourceVersion));
 
         if (YmlUtil.isVersionNewer(sourceVersion, localVersion)) {
             plugin.getLogger().warning(String.format("[%s] New version detected! Automatically updating configuration...", configName));
@@ -71,9 +71,9 @@ public class ConfigUtil {
             this.config = YamlConfiguration.loadConfiguration(configFile);
             this.config.set("version", sourceVersion);
             save(); // 保存更新后的版本号
-            plugin.getLogger().info(String.format("[%s] Update complete. New version is %s.", configName, sourceVersion));
+            plugin.getLogger().info(String.format("[%s] 配置文件更新完成！新版本是 %s。", configName, sourceVersion));
         } else {
-             plugin.getLogger().info(String.format("[%s] " + AnsiColor.AQUA + "[√] Configuration file is up to date." + AnsiColor.RESET, configName));
+             plugin.getLogger().info(String.format("[%s] " + AnsiColor.AQUA + "[√] 您当前正在使用的配置文件是最新版本。" + AnsiColor.RESET, configName));
         }
     }
 
@@ -85,10 +85,10 @@ public class ConfigUtil {
             // 使用 try-with-resources 确保流被关闭
             try (InputStream stream = plugin.getResource(configName)) {
                 if (stream != null) {
-                    plugin.getLogger().info(String.format("[%s] Configuration file not found. Creating a new one from resources.", configName));
+                    plugin.getLogger().info(String.format("[%s] 配置文件不存在，正在从插件资源中导出默认配置文件。", configName));
                     plugin.saveResource(configName, false);
                 } else {
-                    plugin.getLogger().warning(String.format("[%s] Resource file '%s' not found in plugin jar. A blank file will be created.", configName, configName));
+                    plugin.getLogger().warning(String.format("[%s] 资源文件 '%s' 在插件 jar 中不存在. 创建一个空文件。", configName, configName));
                     // 即使资源不存在，也创建一个空文件，避免后续操作出错
                     configFile.createNewFile();
                 }
