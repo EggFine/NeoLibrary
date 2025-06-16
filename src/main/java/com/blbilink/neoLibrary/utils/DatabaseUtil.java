@@ -58,7 +58,6 @@ public class DatabaseUtil {
     }
 
     public static class DatabaseConfig {
-        // ... (DatabaseConfig 类的所有字段和方法保持不变)
         private DatabaseType type;
         private String host = "localhost";
         private int port = 3306;
@@ -182,7 +181,6 @@ public class DatabaseUtil {
             switch (dbConfig.getType()) {
                 case MYSQL:
                 case MARIADB:
-                case POSTGRESQL:
                     hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
                     hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
                     hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
@@ -193,6 +191,13 @@ public class DatabaseUtil {
                     hikariConfig.addDataSourceProperty("cacheServerConfiguration", "true");
                     hikariConfig.addDataSourceProperty("elideSetAutoCommits", "true");
                     hikariConfig.addDataSourceProperty("maintainTimeStats", "false");
+                    break;
+                case POSTGRESQL:
+                    hikariConfig.addDataSourceProperty("prepareThreshold", "5");
+                    hikariConfig.addDataSourceProperty("preparedStatementCacheQueries", "256");
+                    hikariConfig.addDataSourceProperty("preparedStatementCacheSizeMiB", "5");
+                    hikariConfig.addDataSourceProperty("databaseMetadataCacheFields", "65536");
+                    hikariConfig.addDataSourceProperty("databaseMetadataCacheFieldsMiB", "5");
                     break;
             }
 
@@ -213,11 +218,15 @@ public class DatabaseUtil {
     }
 
     private DatabaseConfig loadConfigFromSection(ConfigurationSection section) {
-        // ... (loadConfigFromSection 方法逻辑保持不变)
         DatabaseConfig config = DatabaseConfig.create();
      
         String typeStr = section.getString("type", "SQLITE").toUpperCase();
-        config.type(DatabaseType.valueOf(typeStr));
+        try {
+            config.type(DatabaseType.valueOf(typeStr));
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid database type '" + typeStr + "', using SQLITE as default");
+            config.type(DatabaseType.SQLITE);
+        }
         
         config.host(section.getString("host", "localhost"))
               .port(section.getInt("port", getDefaultPort(config.getType())))
@@ -249,7 +258,6 @@ public class DatabaseUtil {
     }
 
     private int getDefaultPort(DatabaseType type) {
-        // ... (getDefaultPort 方法逻辑保持不变)
         switch (type) {
             case MYSQL:
             case MARIADB:
@@ -262,7 +270,6 @@ public class DatabaseUtil {
     }
 
     private String buildJdbcUrl(DatabaseConfig config) {
-        // ... (buildJdbcUrl 方法逻辑保持不变)
         if (config.getType() == DatabaseType.SQLITE) {
             return config.getType().getUrlPrefix() + config.getFilePath();
         }
@@ -327,6 +334,7 @@ public class DatabaseUtil {
                 }
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "Error executing async query: " + sql, e);
+                throw new RuntimeException(e); // 保持与其他异步方法的一致性
             }
         }, databaseExecutor);
     }
