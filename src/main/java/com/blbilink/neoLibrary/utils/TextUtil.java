@@ -1,5 +1,6 @@
 package com.blbilink.neoLibrary.utils;
 
+import org.bukkit.ChatColor;
 import org.bukkit.plugin.Plugin;
 
 import javax.annotation.Nullable;
@@ -12,7 +13,6 @@ import java.util.stream.Stream;
 
 /**
  * 用于在控制台生成 ASCII Art 风格的 Logo 工具类。
- * 经过优化，提升了性能和代码可读性。
  */
 public class TextUtil {
     // 每个字符的固定高度（行数）
@@ -58,7 +58,6 @@ public class TextUtil {
 
     /**
      * 根据输入文本生成 ASCII Art 字符串。
-     * 此版本经过优化，使用 StringBuilder[] 逐行构建，避免了不必要的对象创建和正则表达式。
      *
      * @param text 要转换的文本。
      * @return 多行的 ASCII Art 字符串。
@@ -83,9 +82,10 @@ public class TextUtil {
             }
         }
 
-        // 移除每行末尾的空白字符，然后用换行符连接所有行
+        // 移除每行末尾的空白字符 (Java 11+ stripTrailing)，然后用换行符连接所有行
         return Stream.of(lines)
-                .map(TextUtil::trimTrailing)
+                .map(StringBuilder::toString)
+                .map(String::stripTrailing)
                 .collect(Collectors.joining("\n"));
     }
 
@@ -108,7 +108,8 @@ public class TextUtil {
 
         // 版本与状态信息
         String version = plugin.getDescription().getVersion();
-        String versionLine = "版本: " + (version != null ? version : "N/A") + " | 状态: " + AnsiColor.GREEN + (str != null ? str : "OK") + AnsiColor.RESET;
+        // 使用标准 ChatColor 替代 AnsiColor
+        String versionLine = "版本: " + (version != null ? version : "N/A") + " | 状态: " + ChatColor.GREEN + (str != null ? str : "OK") + ChatColor.RESET;
         logoBuilder.append(versionLine).append("\n");
 
         // 副标题
@@ -130,20 +131,5 @@ public class TextUtil {
 
         logoBuilder.append("\n\n\n");
         return logoBuilder.toString();
-    }
-
-    /**
-     * 辅助方法：高效移除 StringBuilder 末尾的空白字符。
-     *
-     * @param sb 要处理的 StringBuilder。
-     * @return 处理后的 StringBuilder 的字符串形式。
-     */
-    private static String trimTrailing(StringBuilder sb) {
-        int i = sb.length() - 1;
-        while (i >= 0 && Character.isWhitespace(sb.charAt(i))) {
-            i--;
-        }
-        sb.setLength(i + 1);
-        return sb.toString();
     }
 }

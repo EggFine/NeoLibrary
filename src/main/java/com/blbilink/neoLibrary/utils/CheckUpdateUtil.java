@@ -56,28 +56,25 @@ public class CheckUpdateUtil {
     public void checkUpdate() {
         Bukkit.getScheduler().runTaskAsynchronously(this.plugin, () -> {
             try {
-                URL url = new URL(String.format(SPIGET_API_URL, this.resourceId));
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+                java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+                java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                        .uri(java.net.URI.create(String.format(SPIGET_API_URL, this.resourceId)))
+                        .header("User-Agent", "Mozilla/5.0")
+                        .GET()
+                        .build();
 
-                if (connection.getResponseCode() != 200) {
-                    plugin.getLogger().warning("无法检查更新: Spiget API 返回了 HTTP " + connection.getResponseCode());
+                // 在已经是异步的线程中使用同步发送，避免复杂的 Lambda 字节码导致 Shadow 插件崩溃
+                java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+                if (response.statusCode() != 200) {
+                    plugin.getLogger().warning("无法检查更新: Spiget API 返回了 HTTP " + response.statusCode());
                     return;
                 }
+                findAndCompareVersions(response.body());
 
-                // 读取完整的JSON响应
-                StringBuilder response = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                }
-
-                findAndCompareVersions(response.toString());
-
-            } catch (IOException e) {
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt(); // 恢复中断状态
+            } catch (Exception e) {
                 plugin.getLogger().warning("无法连接到更新服务器: " + e.getMessage());
             }
         });

@@ -357,27 +357,33 @@ public class DatabaseUtil {
         }, databaseExecutor);
     }
 
-    public boolean executeTransaction(Function<Connection, Boolean> transactionFunction) {
+    /**
+     * 在事务中执行数据库操作。
+     * 自动处理 setAutoCommit、commit 和 rollback。
+     *
+     * @param transactionFunction 事务逻辑函数，接收连接并返回结果
+     * @param <T>                 返回值的类型
+     * @return 事务执行的结果
+     * @throws RuntimeException 如果事务失败或发生 SQL 异常
+     */
+    public <T> T executeTransaction(Function<Connection, T> transactionFunction) {
         try (Connection conn = getConnection()) {
+            boolean originalAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
             try {
-                if (transactionFunction.apply(conn)) {
-                    conn.commit();
-                    return true;
-                } else {
-                    conn.rollback();
-                    return false;
-                }
+                T result = transactionFunction.apply(conn);
+                conn.commit();
+                return result;
             } catch (Exception e) {
                 conn.rollback();
                 plugin.getLogger().log(Level.SEVERE, "Transaction failed, rolling back", e);
-                return false;
+                throw new RuntimeException("Transaction failed", e);
             } finally {
-                conn.setAutoCommit(true);
+                conn.setAutoCommit(originalAutoCommit);
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to get connection for transaction", e);
-            return false;
+            throw new RuntimeException("Failed to get connection", e);
         }
     }
     
@@ -392,14 +398,38 @@ public class DatabaseUtil {
     public boolean isInitialized() {
         return initialized && dataSource != null && !dataSource.isClosed();
     }
+
+    /**
+     * 检查数据库连接是否有效。
+     * @param timeout 超时时间（秒）
+     * @return 如果连接有效返回 true，否则返回 false
+     */
+    public boolean isConnectionValid(int timeout) {
+        if (!isInitialized()) return false;
+        try (Connection conn = getConnection()) {
+            return conn.isValid(timeout);
+        } catch (SQLException e) {
+            return false;
+        }
+    }
     
     public void close() {
+        if (databaseExecutor != null && !databaseExecutor.isShutdown()) {
+            databaseExecutor.shutdown();
+            try {
+                // 等待现有任务完成，最多等待 5 秒
+                if (!databaseExecutor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    databaseExecutor.shutdownNow(); // 强制关闭
+                }
+            } catch (InterruptedException e) {
+                databaseExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+        
         if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
             plugin.getLogger().info("Database connection pool closed.");
-        }
-        if (databaseExecutor != null && !databaseExecutor.isShutdown()) {
-            databaseExecutor.shutdown();
         }
         initialized = false;
     }

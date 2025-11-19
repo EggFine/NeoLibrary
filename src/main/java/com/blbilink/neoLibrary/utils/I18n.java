@@ -1,6 +1,7 @@
 package com.blbilink.neoLibrary.utils;
 
 
+import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -38,18 +39,18 @@ public class I18n {
      *
      * @param key       语言文件中的键
      * @param addPrefix 是否添加前缀
-     * @param papi      格式化参数
+     * @param args      格式化参数
      * @return 格式化后的字符串
      */
-    public String as(String key, boolean addPrefix, Object... papi) {
+    public String as(String key, boolean addPrefix, Object... args) {
         // 使用 Optional 处理可能为 null 的情况，避免 NullPointerException
         String str = Optional.ofNullable(language.getString(key))
-                .orElse("§c[I18n] Missing key: " + key) // 提供一个默认的回退值
+                .orElse(ChatColor.RED + "[I18n] Missing key: " + key) // 提供一个默认的回退值
                 .replace('&', '§');
 
         String result = addPrefix ? prefix + str : str;
         // 只有在有参数时才格式化
-        return (papi != null && papi.length > 0) ? String.format(result, papi) : result;
+        return (args != null && args.length > 0) ? String.format(result, args) : result;
     }
 
     public String as(String key) {
@@ -61,10 +62,10 @@ public class I18n {
      *
      * @param key       语言文件中的键
      * @param addPrefix 是否添加前缀
-     * @param papi      格式化参数
+     * @param args      格式化参数
      * @return 格式化后的字符串列表
      */
-    public List<String> asList(String key, boolean addPrefix, Object... papi) {
+    public List<String> asList(String key, boolean addPrefix, Object... args) {
         List<String> list = language.getStringList(key);
         if (list.isEmpty()) {
             return Collections.emptyList();
@@ -74,7 +75,7 @@ public class I18n {
         return list.stream()
                 .map(s -> s.replace('&', '§'))
                 .map(s -> addPrefix ? prefix + s : s)
-                .map(s -> (papi != null && papi.length > 0) ? String.format(s, papi) : s)
+                .map(s -> (args != null && args.length > 0) ? String.format(s, args) : s)
                 .collect(Collectors.toList());
     }
 
@@ -95,7 +96,7 @@ public class I18n {
         // 检查并更新语言文件
         checkVersionAndUpdate(languageFile);
 
-        plugin.getLogger().info(AnsiColor.AQUA + "[√] " + as("loadedLanguage", false, languageName) + " | " + as("Language", false) + AnsiColor.RESET);
+        plugin.getLogger().info(ChatColor.AQUA + "[√] " + as("loadedLanguage", false, languageName) + " | " + as("Language", false) + ChatColor.RESET);
     }
 
     /**
@@ -157,13 +158,13 @@ public class I18n {
         String newVersion = newLangConfig.getString("version", "0.0");
         String cnVersion = cnLangConfig.getString("version", "0.0");
 
-        plugin.getLogger().info("[#] 当前语言 " + languageName + " 版本: " + localVersion + AnsiColor.RESET);
-        plugin.getLogger().info("[#] 最新语言 " + languageName + " 版本: " + newVersion + AnsiColor.RESET);
-        plugin.getLogger().info("[#] 最新默认语言 " + DEFAULT_LANGUAGE + " 版本: " + cnVersion + AnsiColor.RESET);
+        plugin.getLogger().info("[#] 当前语言 " + languageName + " 版本: " + localVersion + ChatColor.RESET);
+        plugin.getLogger().info("[#] 最新语言 " + languageName + " 版本: " + newVersion + ChatColor.RESET);
+        plugin.getLogger().info("[#] 最新默认语言 " + DEFAULT_LANGUAGE + " 版本: " + cnVersion + ChatColor.RESET);
 
         // 检查当前语言文件是否有新版本
         if (YmlUtil.isVersionNewer(newVersion, localVersion)) {
-            plugin.getLogger().info(AnsiColor.AQUA + "检测到语言文件有新版本. 正在更新..." + AnsiColor.RESET);
+            plugin.getLogger().info(ChatColor.AQUA + "检测到语言文件有新版本. 正在更新..." + ChatColor.RESET);
             FileUtil.completeLangFile(plugin, false, currentLangResourcePath);
             // 更新后重新加载文件内容
             this.language = YamlConfiguration.loadConfiguration(languageFile);
@@ -174,7 +175,7 @@ public class I18n {
                 plugin.getLogger().log(Level.SEVERE, "Could not save updated version to language file: " + languageFile.getName(), e);
             }
         } else {
-            plugin.getLogger().info(AnsiColor.AQUA + "[√] 您当前正在使用的语言文件是最新版本。" + AnsiColor.RESET);
+            plugin.getLogger().info(ChatColor.AQUA + "[√] 您当前正在使用的语言文件是最新版本。" + ChatColor.RESET);
         }
 
         // 检查中文文件是否比当前文件新，如果是，则同步缺失的键

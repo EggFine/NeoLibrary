@@ -1,71 +1,82 @@
-# 工作流的名称
-name: Auto Build
+# 工作流名称
+name: Auto Build & Release
 
-# 触发工作流的事件
+# 触发条件
 on:
-  # 1. 当有代码推送到 main 分支时触发
   push:
     branches: [ "main" ]
+  pull_request: # 增加 PR 触发，方便在合并前测试构建是否通过
+    branches: [ "main" ]
+  workflow_dispatch: # 允许手动触发
 
-  # 2. 允许您在 GitHub Actions 页面手动触发此工作流
-  workflow_dispatch:
-
-# 赋予工作流写入权限，以便创建 Release 和 Tag
+# 权限配置
 permissions:
-  contents: write
+  contents: write # 需要写入权限来创建 Release
 
-# 定义工作任务
 jobs:
-  # 任务ID
-  build-and-release:
-    # 指定运行此任务的虚拟机环境
+  build:
+    name: Build NeoLibrary
     runs-on: ubuntu-latest
-
-    # 任务执行的步骤
+    
     steps:
-      # 步骤 1: 检出您的代码
-      - name: 检出代码
-        # 需要设定 fetch-depth: 0 才能获取所有历史记录以生成日志
+      # 1. 检出代码
+      - name: Checkout Source
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # 完整的 Git 历史，用于生成 Changelog
 
-      # 步骤 2: 设置 Java 环境
-      - name: 设置 JDK 21
+      # 2. 设置 Java 21 环境
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      # 步骤 3: 赋予 gradlew 执行权限
-      - name: 赋予 gradlew 执行权限
-        run: chmod +x ./gradlew
+      # 3. 设置 Gradle (包含官方自动缓存功能)
+      # 这是优化的核心：它会自动缓存 Gradle 依赖和 Wrapper，大幅提升构建速度
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          # 仅在 main 分支 push 时写入缓存，PR 只能读取缓存（安全最佳实践）
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      # 步骤 4: 使用 Gradle 构建项目
-      - name: 使用 Gradle 构建
-        run: ./gradlew build
+      # 4. 赋予执行权限
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-      # 步骤 5: 获取项目版本号
-      - name: 获取项目版本
+      # 5. 执行构建
+      # 使用 --no-daemon 节省 CI 内存
+      # 显式调用 shadowJar 确保生成胖包
+      - name: Build with Gradle
+        run: ./gradlew clean build shadowJar --no-daemon
+
+      # 6. 获取版本号 (优化脚本，更加健壮)
+      - name: Get Version
         id: get_version
-        run: echo "VERSION=$(./gradlew -q properties | grep "^version:" | cut -d' ' -f2)" >> $GITHUB_OUTPUT
+        shell: bash
+        run: |
+          # 从 gradle.properties 或 build 输出中提取版本
+          VERSION=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
+          echo "Detected version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      # 步骤 6: 上传构建产物 (Artifact)
-      - name: 上传构建产物
+      # 7. 上传构建产物 (供下载)
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: NeoLibrary-${{ steps.get_version.outputs.VERSION }}
           path: build/libs/*.jar
+          retention-days: 90 # 设置保留时间，避免占用过多存储空间
 
-      # 步骤 7: 创建并发布 Release
-      - name: 自动创建 Release
-        # 仅在推送到 main 分支时执行
+      # 8. 自动发布 Release (仅在 Main 分支且非 PR 时触发)
+      - name: Create Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: ncipollo/release-action@v1 # <-- 使用 ncipollo/release-action
+        uses: ncipollo/release-action@v1
         with:
-          # GITHUB_TOKEN 会被自动使用，无需手动指定
-          # token: ${{ secrets.GITHUB_TOKEN }}
-          name: ${{ steps.get_version.outputs.VERSION }}
-          tag: ${{ steps.get_version.outputs.VERSION }} # 注意这里参数名是 tag
-          generateReleaseNotes: true # 注意这里的驼峰命名
-          artifacts: build/libs/*.jar # 注意这里参数名是 artifacts
+          name: "v${{ steps.get_version.outputs.VERSION }}"
+          tag: "v${{ steps.get_version.outputs.VERSION }}"
+          artifacts: "build/libs/*-all.jar,build/libs/*.jar" # 尝试匹配 shadow jar
+          generateReleaseNotes: true
+          makeLatest: true
+          allowUpdates: true # 允许更新同名 Release，避免报错
+          token: ${{ secrets.GITHUB_TOKEN }}

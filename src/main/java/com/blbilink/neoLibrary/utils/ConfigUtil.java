@@ -1,5 +1,6 @@
 package com.blbilink.neoLibrary.utils;
 
+import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -73,7 +74,7 @@ public class ConfigUtil {
             save(); // 保存更新后的版本号
             plugin.getLogger().info(String.format("[%s] 配置文件更新完成！新版本是 %s。", configName, sourceVersion));
         } else {
-             plugin.getLogger().info(String.format("[%s] " + AnsiColor.AQUA + "[√] 您当前正在使用的配置文件是最新版本。" + AnsiColor.RESET, configName));
+             plugin.getLogger().info(String.format("[%s] " + ChatColor.AQUA + "[√] 您当前正在使用的配置文件是最新版本。" + ChatColor.RESET, configName));
         }
     }
 
