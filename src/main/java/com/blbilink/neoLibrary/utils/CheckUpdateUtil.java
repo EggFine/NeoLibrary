@@ -1,5 +1,6 @@
 package com.blbilink.neoLibrary.utils;
 
+import com.blbilink.neoLibrary.NeoLibrary;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
@@ -30,6 +31,7 @@ public class CheckUpdateUtil {
 
     private final Plugin plugin;
     private final String resourceId; // SpigotMC上的资源ID
+    private final I18n i18n;
 
     // 使用Spiget API v2，它可以返回所有版本信息，并按日期降序排序
     private static final String SPIGET_API_URL = "https://api.spiget.org/v2/resources/%s/versions?sort=-releaseDate&size=2000";
@@ -47,6 +49,7 @@ public class CheckUpdateUtil {
     public CheckUpdateUtil(Plugin plugin, String resourceId) {
         this.plugin = plugin;
         this.resourceId = resourceId;
+        this.i18n = NeoLibrary.getInstance().getI18n();
     }
 
     /**
@@ -67,7 +70,8 @@ public class CheckUpdateUtil {
                 java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
                 if (response.statusCode() != 200) {
-                    plugin.getLogger().warning("无法检查更新: Spiget API 返回了 HTTP " + response.statusCode());
+                    // plugin.getLogger().warning("无法检查更新: Spiget API 返回了 HTTP " + response.statusCode());
+                    plugin.getLogger().warning(i18n.as("UpdateChecker.Error", false, "HTTP " + response.statusCode()));
                     return;
                 }
                 findAndCompareVersions(response.body());
@@ -75,7 +79,8 @@ public class CheckUpdateUtil {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt(); // 恢复中断状态
             } catch (Exception e) {
-                plugin.getLogger().warning("无法连接到更新服务器: " + e.getMessage());
+                // plugin.getLogger().warning("无法连接到更新服务器: " + e.getMessage());
+                plugin.getLogger().warning(i18n.as("UpdateChecker.FailedConnection", false, e.getMessage()));
             }
         });
     }
@@ -136,13 +141,15 @@ public class CheckUpdateUtil {
         // 5. 进行最终比较
         if (latestCompatibleVersion != null && compareVersions(latestCompatibleVersion, currentPluginVersion) > 0) {
             plugin.getLogger().info("=========================================================");
-            plugin.getLogger().info("插件 " + plugin.getName() + " 有一个针对您服务器版本的更新！");
-            plugin.getLogger().info("当前版本: " + currentPluginVersion.toFullString());
-            plugin.getLogger().info("最新版本: " + latestCompatibleVersion.toFullString());
-            plugin.getLogger().info("请前往SpigotMC页面下载更新。");
+            // plugin.getLogger().info("插件 " + plugin.getName() + " 有一个针对您服务器版本的更新！");
+            plugin.getLogger().info(i18n.as("UpdateChecker.Found", false, latestCompatibleVersion.toFullString(), currentPluginVersion.toFullString()));
+            // plugin.getLogger().info("最新版本: " + latestCompatibleVersion.toFullString());
+            // plugin.getLogger().info("请前往SpigotMC页面下载更新。");
+            plugin.getLogger().info(i18n.as("UpdateChecker.Download", false, "https://www.spigotmc.org/resources/" + resourceId));
             plugin.getLogger().info("=========================================================");
         } else {
-            plugin.getLogger().info(plugin.getName() + " 已是当前游戏版本的最新版。");
+            // plugin.getLogger().info(plugin.getName() + " 已是当前游戏版本的最新版。");
+            plugin.getLogger().info(i18n.as("UpdateChecker.UpToDate", false));
         }
     }
 

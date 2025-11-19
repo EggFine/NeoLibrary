@@ -1,0 +1,6 @@
+Settings:
+  # Language file name (without .yml suffix)
+  # Available: zh_CN, en_US
+  Language: zh_CN
+  # Prefix for plugin messages
+  Prefix: "&8[&bNeoLibrary&8] "

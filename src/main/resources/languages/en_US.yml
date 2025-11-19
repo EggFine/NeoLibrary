@@ -1,0 +1,13 @@
+version: "1.0"
+
+# General
+loadedLanguage: "Loaded language file: {0}"
+Language: "English (US)"
+
+# Update Checker
+UpdateChecker:
+  Found: "&aA new version is available: &e{0} &7(Current: {1})"
+  Download: "&aDownload it at: &e{0}"
+  Error: "&cFailed to check for updates: {0}"
+  UpToDate: "&aYou are running the latest version."
+  FailedConnection: "&cCould not connect to update server: {0}"
