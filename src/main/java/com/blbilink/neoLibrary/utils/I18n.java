@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -23,6 +24,39 @@ public class I18n {
 
     private static final String DEFAULT_LANGUAGE = "zh_CN";
     private static final String LANGUAGE_FOLDER_PATH = "languages";
+    
+    /**
+     * 统一的默认回退消息映射表。
+     * 当语言文件中缺少对应 key 或 I18n 实例为 null 时，使用这些默认英文消息。
+     */
+    private static final Map<String, String> DEFAULT_MESSAGES = Map.ofEntries(
+            // UpdateChecker
+            Map.entry("UpdateChecker.Error", "Failed to check for updates: %s"),
+            Map.entry("UpdateChecker.FailedConnection", "Could not connect to update server: %s"),
+            Map.entry("UpdateChecker.Found", "A new version is available: %s (Current: %s)"),
+            Map.entry("UpdateChecker.Download", "Download it at: %s"),
+            Map.entry("UpdateChecker.UpToDate", "You are running the latest version."),
+            Map.entry("UpdateChecker.ParseError", "Could not parse version from server version string, update check skipped."),
+            Map.entry("UpdateChecker.ParseMCError", "Could not parse Minecraft version: %s"),
+            Map.entry("UpdateChecker.InvalidVersion", "Current plugin version format is invalid, cannot check for updates."),
+            Map.entry("UpdateChecker.NoVersions", "Could not parse any version information from API response."),
+            // ConfigUtil
+            Map.entry("ConfigUtil.NotInJar", "Config file '%s' not found in plugin jar, skipping version check."),
+            Map.entry("ConfigUtil.LocalVersion", "Current config version: %s, Latest config version: %s"),
+            Map.entry("ConfigUtil.NewVersionDetected", "New version detected! Automatically updating configuration..."),
+            Map.entry("ConfigUtil.UpdateComplete", "Config update complete! New version is %s."),
+            Map.entry("ConfigUtil.UpToDate", "You are using the latest config version."),
+            Map.entry("ConfigUtil.NotExist", "Config file does not exist, exporting default config from plugin resources."),
+            Map.entry("ConfigUtil.NotInResource", "Resource file '%s' not found in plugin jar, creating an empty file."),
+            Map.entry("ConfigUtil.Reloading", "Reloading configuration file..."),
+            // FoliaUtil
+            Map.entry("FoliaUtil.FoliaDetected", "Detected Folia-compatible core, using Folia scheduler"),
+            Map.entry("FoliaUtil.BukkitDetected", "Detected standard Bukkit core, using standard scheduler"),
+            Map.entry("FoliaUtil.FoliaInitError", "Detected Folia environment, but failed to initialize Folia scheduler! Possibly version incompatible. Falling back to standard Bukkit scheduler."),
+            // Logo
+            Map.entry("Logo.Status", "Loading..."),
+            Map.entry("Logo.SubTitle", "The Next Generation blbiLibrary")
+    );
 
     public I18n(Plugin plugin, String prefix, String languageName) {
         this.plugin = Objects.requireNonNull(plugin, "Plugin cannot be null");
@@ -51,6 +85,24 @@ public class I18n {
 
     public String as(String key) {
         return as(key, false);
+    }
+    
+    /**
+     * 静态方法：获取消息，支持 I18n 实例为 null 的情况。
+     * 当 i18n 为 null 时，使用统一的默认回退消息。
+     * 
+     * @param i18n I18n 实例（可以为 null）
+     * @param key  消息键
+     * @param args 格式化参数
+     * @return 格式化后的消息字符串
+     */
+    public static String getMessageOrDefault(I18n i18n, String key, Object... args) {
+        if (i18n != null) {
+            return i18n.as(key, false, args);
+        }
+        // 从统一的默认消息映射中获取
+        String template = DEFAULT_MESSAGES.getOrDefault(key, key);
+        return (args != null && args.length > 0) ? String.format(template, args) : template;
     }
 
     /**

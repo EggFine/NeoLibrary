@@ -107,25 +107,10 @@ public class CheckUpdateUtil {
     }
     
     /**
-     * 获取国际化消息，如果 i18n 为 null 则返回默认消息
+     * 获取国际化消息，使用统一的回退机制
      */
     private String getMessage(String key, Object... args) {
-        if (i18n != null) {
-            return i18n.as(key, false, args);
-        }
-        // 默认英文消息
-        return switch (key) {
-            case "UpdateChecker.Error" -> "Failed to check for updates: " + (args.length > 0 ? args[0] : "");
-            case "UpdateChecker.FailedConnection" -> "Could not connect to update server: " + (args.length > 0 ? args[0] : "");
-            case "UpdateChecker.Found" -> "A new version is available: " + (args.length > 0 ? args[0] : "") + " (Current: " + (args.length > 1 ? args[1] : "") + ")";
-            case "UpdateChecker.Download" -> "Download it at: " + (args.length > 0 ? args[0] : "");
-            case "UpdateChecker.UpToDate" -> "You are running the latest version.";
-            case "UpdateChecker.ParseError" -> "Could not parse version from server version string, update check skipped.";
-            case "UpdateChecker.ParseMCError" -> "Could not parse Minecraft version: " + (args.length > 0 ? args[0] : "");
-            case "UpdateChecker.InvalidVersion" -> "Current plugin version format is invalid, cannot check for updates.";
-            case "UpdateChecker.NoVersions" -> "Could not parse any version information from API response.";
-            default -> key;
-        };
+        return I18n.getMessageOrDefault(i18n, key, args);
     }
 
     /**

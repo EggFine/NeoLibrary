@@ -117,19 +117,10 @@ public final class FoliaUtil {
     }
     
     /**
-     * 获取国际化消息，如果 i18n 为 null 则返回默认消息
+     * 获取国际化消息，使用统一的回退机制
      */
     private static String getMessage(I18n i18n, String key) {
-        if (i18n != null) {
-            return i18n.as(key, false);
-        }
-        // 默认英文消息
-        return switch (key) {
-            case "FoliaUtil.FoliaDetected" -> "Detected Folia-compatible core, using Folia scheduler";
-            case "FoliaUtil.BukkitDetected" -> "Detected standard Bukkit core, using standard scheduler";
-            case "FoliaUtil.FoliaInitError" -> "Detected Folia environment, but failed to initialize Folia scheduler! Possibly version incompatible. Falling back to standard Bukkit scheduler.";
-            default -> key;
-        };
+        return I18n.getMessageOrDefault(i18n, key);
     }
     
     /**

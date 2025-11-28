@@ -52,25 +52,10 @@ public class ConfigUtil {
     }
     
     /**
-     * 获取国际化消息，如果 i18n 为 null 则返回默认消息
+     * 获取国际化消息，使用统一的回退机制
      */
     private String getMessage(String key, Object... args) {
-        if (i18n != null) {
-            return i18n.as(key, false, args);
-        }
-        // 默认英文消息
-        String msg = switch (key) {
-            case "ConfigUtil.NotInJar" -> "Config file '%s' not found in plugin jar, skipping version check.";
-            case "ConfigUtil.LocalVersion" -> "Current config version: %s, Latest config version: %s";
-            case "ConfigUtil.NewVersionDetected" -> "New version detected! Automatically updating configuration...";
-            case "ConfigUtil.UpdateComplete" -> "Config update complete! New version is %s.";
-            case "ConfigUtil.UpToDate" -> "You are using the latest config version.";
-            case "ConfigUtil.NotExist" -> "Config file does not exist, exporting default config from plugin resources.";
-            case "ConfigUtil.NotInResource" -> "Resource file '%s' not found in plugin jar, creating an empty file.";
-            case "ConfigUtil.Reloading" -> "Reloading configuration file...";
-            default -> key;
-        };
-        return (args != null && args.length > 0) ? String.format(msg, args) : msg;
+        return I18n.getMessageOrDefault(i18n, key, args);
     }
     
     /**
