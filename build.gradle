@@ -30,7 +30,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
+    // Folia API 已包含 Spigot API，只需要依赖 folia-api 即可避免 capability 冲突
     compileOnly "dev.folia:folia-api:1.21.8-R0.1-SNAPSHOT"
     compileOnly 'com.google.errorprone:error_prone_annotations:2.28.0'
 
