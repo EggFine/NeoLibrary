@@ -8,13 +8,9 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -43,9 +39,9 @@ public class I18n {
      * @return 格式化后的字符串
      */
     public String as(String key, boolean addPrefix, Object... args) {
-        // 使用 Optional 处理可能为 null 的情况，避免 NullPointerException
-        String str = Optional.ofNullable(language.getString(key))
-                .orElse(ChatColor.RED + "[I18n] Missing key: " + key) // 提供一个默认的回退值
+        // 直接判断 null，避免 Optional 创建对象的开销
+        String raw = language.getString(key);
+        String str = (raw != null ? raw : ChatColor.RED + "[I18n] Missing key: " + key)
                 .replace('&', '§');
 
         String result = addPrefix ? prefix + str : str;
@@ -71,11 +67,16 @@ public class I18n {
             return Collections.emptyList();
         }
 
-        // 使用 Stream API 进行处理，更简洁
+        // 合并为单次 map 操作，提高性能
+        final boolean hasArgs = args != null && args.length > 0;
         return list.stream()
-                .map(s -> s.replace('&', '§'))
-                .map(s -> addPrefix ? prefix + s : s)
-                .map(s -> (args != null && args.length > 0) ? String.format(s, args) : s)
+                .map(s -> {
+                    String result = s.replace('&', '§');
+                    if (addPrefix) {
+                        result = prefix + result;
+                    }
+                    return hasArgs ? String.format(result, args) : result;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -119,7 +120,7 @@ public class I18n {
                 plugin.saveResource(resourcePath, false);
             } else {
                 // 如果指定的语言在 jar 中不存在，回退到默认语言
-                plugin.getLogger().warning("指定的语言文件 '" + languageName + ".yml' 在插件资源中不存在. 回退到默认语言 '" + DEFAULT_LANGUAGE + ".yml'。");
+                plugin.getLogger().warning("Specified language file '" + languageName + ".yml' not found in plugin resources. Falling back to default language '" + DEFAULT_LANGUAGE + ".yml'.");
                 this.languageName = DEFAULT_LANGUAGE;
                 resourcePath = LANGUAGE_FOLDER_PATH + "/" + DEFAULT_LANGUAGE + ".yml";
                 languageFile = new File(languageFolder, this.languageName + ".yml");
@@ -145,12 +146,12 @@ public class I18n {
         String currentLangResourcePath = LANGUAGE_FOLDER_PATH + "/" + languageName + ".yml";
         String defaultLangResourcePath = LANGUAGE_FOLDER_PATH + "/" + DEFAULT_LANGUAGE + ".yml";
 
-        // 从 Jar 中加载当前语言和默认中文语言的配置以进行比较
-        FileConfiguration newLangConfig = loadConfigFromResource(currentLangResourcePath);
-        FileConfiguration cnLangConfig = loadConfigFromResource(defaultLangResourcePath);
+        // 从 Jar 中加载当前语言和默认中文语言的配置以进行比较（使用公共方法）
+        FileConfiguration newLangConfig = FileUtil.loadConfigFromResource(plugin, currentLangResourcePath);
+        FileConfiguration cnLangConfig = FileUtil.loadConfigFromResource(plugin, defaultLangResourcePath);
 
         if (newLangConfig == null || cnLangConfig == null) {
-            plugin.getLogger().warning("无法加载语言配置文件，因此无法进行语言配置文件版本检查。");
+            plugin.getLogger().warning("Could not load language config files, skipping language version check.");
             return;
         }
 
@@ -158,13 +159,13 @@ public class I18n {
         String newVersion = newLangConfig.getString("version", "0.0");
         String cnVersion = cnLangConfig.getString("version", "0.0");
 
-        plugin.getLogger().info("[#] 当前语言 " + languageName + " 版本: " + localVersion + ChatColor.RESET);
-        plugin.getLogger().info("[#] 最新语言 " + languageName + " 版本: " + newVersion + ChatColor.RESET);
-        plugin.getLogger().info("[#] 最新默认语言 " + DEFAULT_LANGUAGE + " 版本: " + cnVersion + ChatColor.RESET);
+        plugin.getLogger().info("[#] Current language " + languageName + " version: " + localVersion + ChatColor.RESET);
+        plugin.getLogger().info("[#] Latest language " + languageName + " version: " + newVersion + ChatColor.RESET);
+        plugin.getLogger().info("[#] Latest default language " + DEFAULT_LANGUAGE + " version: " + cnVersion + ChatColor.RESET);
 
         // 检查当前语言文件是否有新版本
         if (YmlUtil.isVersionNewer(newVersion, localVersion)) {
-            plugin.getLogger().info(ChatColor.AQUA + "检测到语言文件有新版本. 正在更新..." + ChatColor.RESET);
+            plugin.getLogger().info(ChatColor.AQUA + "New language file version detected. Updating..." + ChatColor.RESET);
             FileUtil.completeLangFile(plugin, false, currentLangResourcePath);
             // 更新后重新加载文件内容
             this.language = YamlConfiguration.loadConfiguration(languageFile);
@@ -175,34 +176,16 @@ public class I18n {
                 plugin.getLogger().log(Level.SEVERE, "Could not save updated version to language file: " + languageFile.getName(), e);
             }
         } else {
-            plugin.getLogger().info(ChatColor.AQUA + "[√] 您当前正在使用的语言文件是最新版本。" + ChatColor.RESET);
+            plugin.getLogger().info(ChatColor.AQUA + "[OK] You are using the latest language file version." + ChatColor.RESET);
         }
 
-        // 检查中文文件是否比当前文件新，如果是，则同步缺失的键
+        // 检查默认语言文件是否比当前文件新，如果是，则同步缺失的键
         if (!languageName.equals(DEFAULT_LANGUAGE) && YmlUtil.isVersionNewer(cnVersion, localVersion)) {
-            plugin.getLogger().warning("The default Chinese (zh_CN.yml) language file is newer than yours. Synchronizing new keys...");
+            plugin.getLogger().warning("The default (" + DEFAULT_LANGUAGE + ".yml) language file is newer than yours. Synchronizing new keys...");
             FileUtil.completeLangFile(plugin, true, currentLangResourcePath);
             // 再次重新加载以确保所有更改都生效
             this.language = YamlConfiguration.loadConfiguration(languageFile);
         }
     }
 
-    /**
-     * 从插件资源中加载 YamlConfiguration。
-     *
-     * @param resourcePath 资源路径
-     * @return 加载的配置，如果失败则返回 null
-     */
-    private FileConfiguration loadConfigFromResource(String resourcePath) {
-        try (InputStream stream = plugin.getResource(resourcePath);
-             InputStreamReader reader = (stream != null) ? new InputStreamReader(stream, StandardCharsets.UTF_8) : null) {
-            if (reader == null) {
-                return null;
-            }
-            return YamlConfiguration.loadConfiguration(reader);
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to load resource: " + resourcePath, e);
-            return null;
-        }
-    }
 }

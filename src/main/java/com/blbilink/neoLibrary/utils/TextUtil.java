@@ -8,8 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.StringJoiner;
 
 /**
  * 用于在控制台生成 ASCII Art 风格的 Logo 工具类。
@@ -68,25 +67,31 @@ public class TextUtil {
         }
 
         // 为每一行使用一个 StringBuilder，并预设容量以提高效率
-        StringBuilder[] lines = Stream.generate(() -> new StringBuilder(text.length() * 6))
-                .limit(CHAR_HEIGHT)
-                .toArray(StringBuilder[]::new);
+        // 使用普通数组初始化，避免 Stream.generate 的开销
+        StringBuilder[] lines = new StringBuilder[CHAR_HEIGHT];
+        int estimatedWidth = text.length() * 6;
+        for (int i = 0; i < CHAR_HEIGHT; i++) {
+            lines[i] = new StringBuilder(estimatedWidth);
+        }
 
-        // 遍历输入文本的每个字符，并将其 ASCII Art 拼接到对应的行上
-        for (char c : text.toUpperCase().toCharArray()) {
+        // 使用 charAt 迭代，避免 toCharArray() 创建临时数组
+        String upperText = text.toUpperCase();
+        for (int idx = 0; idx < upperText.length(); idx++) {
+            char c = upperText.charAt(idx);
             String[] charArt = ASCII_ART.getOrDefault(c, FALLBACK_CHAR_ART);
+            // charArt 始终是长度为 CHAR_HEIGHT 的数组，无需边界检查
             for (int i = 0; i < CHAR_HEIGHT; i++) {
-                if (i < charArt.length) {
-                    lines[i].append(charArt[i]);
-                }
+                lines[i].append(charArt[i]);
             }
         }
 
         // 移除每行末尾的空白字符 (Java 11+ stripTrailing)，然后用换行符连接所有行
-        return Stream.of(lines)
-                .map(StringBuilder::toString)
-                .map(String::stripTrailing)
-                .collect(Collectors.joining("\n"));
+        // 使用 StringJoiner 替代 Stream，对于小数组更高效
+        StringJoiner joiner = new StringJoiner("\n");
+        for (StringBuilder line : lines) {
+            joiner.add(line.toString().stripTrailing());
+        }
+        return joiner.toString();
     }
 
     /**
@@ -109,7 +114,7 @@ public class TextUtil {
         // 版本与状态信息
         String version = plugin.getDescription().getVersion();
         // 使用标准 ChatColor 替代 AnsiColor
-        String versionLine = "版本: " + (version != null ? version : "N/A") + " | 状态: " + ChatColor.GREEN + (str != null ? str : "OK") + ChatColor.RESET;
+        String versionLine = "Version: " + (version != null ? version : "N/A") + " | Status: " + ChatColor.GREEN + (str != null ? str : "OK") + ChatColor.RESET;
         logoBuilder.append(versionLine).append("\n");
 
         // 副标题
@@ -121,11 +126,11 @@ public class TextUtil {
 
         // 开发者信息
         if (mainAuthor != null && !mainAuthor.isEmpty()) {
-            String authorLine = "主要开发者: " + String.join(", ", mainAuthor);
+            String authorLine = "Main Developer: " + String.join(", ", mainAuthor);
             logoBuilder.append(authorLine).append("\n");
         }
         if (subAuthor != null && !subAuthor.isEmpty()) {
-            String authorLine = "次要开发者: " + String.join(", ", subAuthor);
+            String authorLine = "Contributors: " + String.join(", ", subAuthor);
             logoBuilder.append(authorLine).append("\n");
         }
 

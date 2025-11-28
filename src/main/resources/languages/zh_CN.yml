@@ -1,8 +1,13 @@
-version: "1.0"
+version: "1.2"
 
 # General
 loadedLanguage: "已加载语言文件: {0}"
 Language: "简体中文 (中国)"
+
+# Logo
+Logo:
+  Status: "加载中..."
+  SubTitle: "下一代 blbiLibrary\nSpigotMC: https://www.spigotmc.org/resources/125811/"
 
 # Update Checker
 UpdateChecker:
@@ -11,3 +16,24 @@ UpdateChecker:
   Error: "&c检查更新失败: {0}"
   UpToDate: "&a当前已是最新版本。"
   FailedConnection: "&c无法连接到更新服务器: {0}"
+  ParseError: "&c无法从服务器版本字符串中提取Minecraft版本, 更新检查跳过。"
+  ParseMCError: "&c无法解析服务器Minecraft版本: {0}"
+  InvalidVersion: "&c当前插件版本号格式不正确，无法检查更新。"
+  NoVersions: "&e未能从API响应中解析出任何版本信息。"
+
+# ConfigUtil
+ConfigUtil:
+  NotInJar: "&e配置文件 '{0}' 在插件 jar 中不存在，跳过版本检查。"
+  LocalVersion: "&7当前配置文件版本: {0}, 最新配置文件版本: {1}"
+  NewVersionDetected: "&a检测到配置文件有新版本！正在自动更新配置..."
+  UpdateComplete: "&a配置文件更新完成！新版本是 {0}。"
+  UpToDate: "&a您当前正在使用的配置文件是最新版本。"
+  NotExist: "&7配置文件不存在，正在从插件资源中导出默认配置文件。"
+  NotInResource: "&e资源文件 '{0}' 在插件 jar 中不存在，创建一个空文件。"
+  Reloading: "&7正在重新加载配置文件..."
+
+# FoliaUtil
+FoliaUtil:
+  FoliaDetected: "&a检测到兼容 Folia 核心，正在使用 Folia 调度器"
+  BukkitDetected: "&a检测到标准 Bukkit 核心，正在使用标准调度器"
+  FoliaInitError: "&c检测到 Folia 环境，但初始化 Folia 调度器时发生错误！可能是版本不兼容。将回退至标准 Bukkit 调度器。"

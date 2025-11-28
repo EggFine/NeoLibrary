@@ -7,7 +7,6 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -17,6 +16,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -29,8 +29,8 @@ public class DatabaseUtil {
 
     private final Plugin plugin;
     private final ExecutorService databaseExecutor;
-    private HikariDataSource dataSource;
-    private boolean initialized = false;
+    private volatile HikariDataSource dataSource;
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
 
     // 默认配置常量
     private static final int DEFAULT_MAX_POOL_SIZE = 10;
@@ -149,7 +149,7 @@ public class DatabaseUtil {
      * @return 初始化成功返回 true
      */
     public boolean initialize(DatabaseConfig dbConfig) {
-        if (initialized) {
+        if (initialized.get()) {
             plugin.getLogger().warning("Database is already initialized!");
             return true;
         }
@@ -199,10 +199,13 @@ public class DatabaseUtil {
                     hikariConfig.addDataSourceProperty("databaseMetadataCacheFields", "65536");
                     hikariConfig.addDataSourceProperty("databaseMetadataCacheFieldsMiB", "5");
                     break;
+                case SQLITE:
+                    // SQLite 不需要额外的优化参数
+                    break;
             }
 
             this.dataSource = new HikariDataSource(hikariConfig);
-            this.initialized = true;
+            this.initialized.set(true);
             plugin.getLogger().info("Database connection pool initialized successfully! Type: " + dbConfig.getType().name());
             
             return true;
@@ -258,15 +261,11 @@ public class DatabaseUtil {
     }
 
     private int getDefaultPort(DatabaseType type) {
-        switch (type) {
-            case MYSQL:
-            case MARIADB:
-                return 3306;
-            case POSTGRESQL:
-                return 5432;
-            default:
-                return 0;
-        }
+        return switch (type) {
+            case MYSQL, MARIADB -> 3306;
+            case POSTGRESQL -> 5432;
+            case SQLITE -> 0;
+        };
     }
 
     private String buildJdbcUrl(DatabaseConfig config) {
@@ -305,7 +304,7 @@ public class DatabaseUtil {
      * @throws SQLException 如果获取连接失败或数据库未初始化
      */
     public Connection getConnection() throws SQLException {
-        if (!initialized || dataSource == null || dataSource.isClosed()) {
+        if (!initialized.get() || dataSource == null || dataSource.isClosed()) {
             throw new SQLException("Database is not initialized or has been closed.");
         }
         return dataSource.getConnection();
@@ -396,7 +395,7 @@ public class DatabaseUtil {
     }
     
     public boolean isInitialized() {
-        return initialized && dataSource != null && !dataSource.isClosed();
+        return initialized.get() && dataSource != null && !dataSource.isClosed();
     }
 
     /**
@@ -414,10 +413,12 @@ public class DatabaseUtil {
     }
     
     public void close() {
+        // 1. 首先停止接受新任务，但允许正在执行的任务完成
         if (databaseExecutor != null && !databaseExecutor.isShutdown()) {
             databaseExecutor.shutdown();
             try {
                 // 等待现有任务完成，最多等待 5 秒
+                // 这些任务可能还需要使用 dataSource
                 if (!databaseExecutor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
                     databaseExecutor.shutdownNow(); // 强制关闭
                 }
@@ -427,10 +428,11 @@ public class DatabaseUtil {
             }
         }
         
+        // 2. 所有任务完成后，关闭数据库连接池
         if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
             plugin.getLogger().info("Database connection pool closed.");
         }
-        initialized = false;
+        initialized.set(false);
     }
 }

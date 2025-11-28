@@ -22,12 +22,20 @@ import java.util.function.Consumer;
  * 这使得代码更清晰、可维护，并且完全解耦，易于在任何插件中使用。</p>
  *
  * @author EggFine
- * @version 2.2.1
+ * @version 2.3.0
  */
 public final class FoliaUtil {
 
     private final SchedulerAdapter scheduler;
     private final Plugin plugin;
+    
+    // 静态缓存：服务器类型只需要检测一次
+    private static volatile Boolean isFolia = null;
+    private static volatile SchedulerAdapter cachedFoliaAdapter = null;
+    // 用于追踪是否已输出检测日志（避免重复输出）
+    private static volatile boolean logPrinted = false;
+    // BukkitSchedulerAdapter 是无状态的，可以全局共享
+    private static final SchedulerAdapter BUKKIT_ADAPTER = new BukkitSchedulerAdapter();
 
     /**
      * 构造一个新的 FoliaUtil 实例。
@@ -36,29 +44,132 @@ public final class FoliaUtil {
      * @param plugin 您的插件实例。
      */
     public FoliaUtil(Plugin plugin) {
+        this(plugin, null);
+    }
+    
+    /**
+     * 构造一个新的 FoliaUtil 实例，支持国际化。
+     * <p>它会自动检测服务器类型（Bukkit/Spigot/Paper 或 Folia）并配置相应的任务调度器。</p>
+     *
+     * @param plugin 您的插件实例。
+     * @param i18n   国际化实例（可以为 null，将使用默认英文消息）
+     */
+    public FoliaUtil(Plugin plugin, I18n i18n) {
         this.plugin = plugin;
-        SchedulerAdapter tempScheduler;
-        try {
-            // 尝试通过类名检测是否为 Folia 环境
-            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
-            // 如果类存在，则尝试初始化 Folia 适配器
-            try {
-                tempScheduler = new FoliaSchedulerAdapter();
-                plugin.getLogger().info(ChatColor.AQUA + "[√]" + ChatColor.RESET + " 检测到兼容" + ChatColor.AQUA + " Folia " + ChatColor.RESET + "核心，并使用与其兼容的插件 [" + ChatColor.AQUA + plugin.getName() + ChatColor.RESET + "] ，正在使用 Folia 调度器");
-            } catch (Exception e) {
-                // 如果 Folia 适配器初始化失败（例如版本不兼容导致反射失败）
-                plugin.getLogger().severe("[×] 检测到 Folia 环境，但初始化 Folia 调度器时发生错误！可能是版本不兼容。将回退至标准 Bukkit 调度器以保证基本功能。");
-                // 打印原始的初始化异常堆栈以供调试
-                e.printStackTrace();
-                tempScheduler = new BukkitSchedulerAdapter();
-            }
-        } catch (ClassNotFoundException e) {
-            // 如果类不存在，则为标准 Bukkit 环境
-            tempScheduler = new BukkitSchedulerAdapter();
-            plugin.getLogger().info(ChatColor.AQUA + "[√]" + ChatColor.RESET + " 检测到标准" + ChatColor.AQUA + " Bukkit " + ChatColor.RESET + "核心，并使用与其兼容的插件 [" + ChatColor.AQUA + plugin.getName() + ChatColor.RESET + "] ，正在使用 标准 调度器");
+        // 确保调度器已初始化
+        this.scheduler = initializeScheduler(plugin, i18n);
+    }
+    
+    /**
+     * 初始化调度器（线程安全）。
+     * 此方法统一处理检测和初始化逻辑，解决静态 isFolia() 和构造函数之间的不一致问题。
+     */
+    private static SchedulerAdapter initializeScheduler(Plugin plugin, I18n i18n) {
+        // 快速路径：如果已经初始化，直接返回
+        if (isFolia != null && (cachedFoliaAdapter != null || !isFolia)) {
+            return (isFolia && cachedFoliaAdapter != null) ? cachedFoliaAdapter : BUKKIT_ADAPTER;
         }
-        // 保证 scheduler 字段总能被初始化
-        this.scheduler = tempScheduler;
+        
+        // 慢速路径：需要初始化
+        synchronized (FoliaUtil.class) {
+            // 双重检查
+            if (isFolia != null && (cachedFoliaAdapter != null || !isFolia)) {
+                return (isFolia && cachedFoliaAdapter != null) ? cachedFoliaAdapter : BUKKIT_ADAPTER;
+            }
+            
+            // 检测环境
+            boolean foliaEnv = detectFoliaEnvironment();
+            
+            if (foliaEnv) {
+                // 尝试初始化 Folia 适配器（如果还没有初始化）
+                if (cachedFoliaAdapter == null) {
+                    try {
+                        cachedFoliaAdapter = new FoliaSchedulerAdapter();
+                        isFolia = true;
+                    } catch (Exception e) {
+                        // Folia 适配器初始化失败（例如版本不兼容）
+                        if (!logPrinted && plugin != null) {
+                            plugin.getLogger().severe("[X] " + getMessage(i18n, "FoliaUtil.FoliaInitError"));
+                            e.printStackTrace();
+                        }
+                        isFolia = false;
+                    }
+                } else {
+                    isFolia = true;
+                }
+                
+                // 输出成功日志（仅首次）
+                if (isFolia && !logPrinted && plugin != null) {
+                    plugin.getLogger().info(ChatColor.AQUA + "[OK] " + ChatColor.RESET + getMessage(i18n, "FoliaUtil.FoliaDetected"));
+                    logPrinted = true;
+                }
+            } else {
+                isFolia = false;
+                // 输出检测日志（仅首次）
+                if (!logPrinted && plugin != null) {
+                    plugin.getLogger().info(ChatColor.AQUA + "[OK] " + ChatColor.RESET + getMessage(i18n, "FoliaUtil.BukkitDetected"));
+                    logPrinted = true;
+                }
+            }
+            
+            return (isFolia && cachedFoliaAdapter != null) ? cachedFoliaAdapter : BUKKIT_ADAPTER;
+        }
+    }
+    
+    /**
+     * 获取国际化消息，如果 i18n 为 null 则返回默认消息
+     */
+    private static String getMessage(I18n i18n, String key) {
+        if (i18n != null) {
+            return i18n.as(key, false);
+        }
+        // 默认英文消息
+        return switch (key) {
+            case "FoliaUtil.FoliaDetected" -> "Detected Folia-compatible core, using Folia scheduler";
+            case "FoliaUtil.BukkitDetected" -> "Detected standard Bukkit core, using standard scheduler";
+            case "FoliaUtil.FoliaInitError" -> "Detected Folia environment, but failed to initialize Folia scheduler! Possibly version incompatible. Falling back to standard Bukkit scheduler.";
+            default -> key;
+        };
+    }
+    
+    /**
+     * 检查当前服务器是否为 Folia 环境。
+     * <p>注意：此方法会缓存检测结果。首次调用可能比较慢。</p>
+     * <p>此方法仅进行环境检测，不会初始化调度器适配器或打印日志。</p>
+     * <p>如果需要完整初始化（包括日志），请创建 FoliaUtil 实例。</p>
+     *
+     * @return 如果是 Folia 环境返回 true，否则返回 false
+     */
+    public static boolean isFolia() {
+        // 使用本地变量避免多次读取 volatile
+        Boolean cached = isFolia;
+        if (cached != null) {
+            return cached;
+        }
+        
+        // 首次检测，使用同步确保只检测一次
+        // 注意：这里只设置 isFolia，不初始化适配器
+        // 创建 FoliaUtil 实例时会完成完整初始化
+        synchronized (FoliaUtil.class) {
+            if (isFolia != null) {
+                return isFolia;
+            }
+            isFolia = detectFoliaEnvironment();
+            return isFolia;
+        }
+    }
+    
+    /**
+     * 内部方法：检测是否为 Folia 环境。
+     * 仅检测类是否存在，不初始化适配器。
+     */
+    private static boolean detectFoliaEnvironment() {
+        try {
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     /**
@@ -315,7 +426,7 @@ public final class FoliaUtil {
                 executeForEntity = lookup.unreflect(entitySchedulerClass.getDeclaredMethod("execute", Plugin.class, Runnable.class, Runnable.class, long.class));
 
             } catch (Exception e) {
-                throw new IllegalStateException("Folia 调度器适配器初始化失败。请确认您正在使用兼容的 Folia 服务端版本。", e);
+                throw new IllegalStateException("Failed to initialize Folia scheduler adapter. Please ensure you are using a compatible Folia server version.", e);
             }
         }
 
@@ -323,7 +434,7 @@ public final class FoliaUtil {
             try {
                 return getter.invoke(Bukkit.getServer());
             } catch (Throwable e) {
-                throw new RuntimeException("调用调度器 getter 失败", e);
+                throw new RuntimeException("Failed to invoke scheduler getter", e);
             }
         }
 

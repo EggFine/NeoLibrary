@@ -8,8 +8,6 @@ import org.bukkit.plugin.Plugin;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.logging.Level;
 
@@ -22,6 +20,7 @@ public class ConfigUtil {
     private final Plugin plugin;
     private final String configName;
     private final File configFile;
+    private final I18n i18n;
     private FileConfiguration config;
 
     /**
@@ -32,11 +31,46 @@ public class ConfigUtil {
      * @param configName 配置文件的名称 (例如 "config.yml")
      */
     public ConfigUtil(Plugin plugin, String configName) {
+        this(plugin, configName, null);
+    }
+    
+    /**
+     * 创建一个配置文件管理器实例，支持国际化。
+     * 在构造时，它会自动加载、创建或同步配置文件。
+     *
+     * @param plugin     你的插件实例
+     * @param configName 配置文件的名称 (例如 "config.yml")
+     * @param i18n       国际化实例（可以为 null，将使用默认英文消息）
+     */
+    public ConfigUtil(Plugin plugin, String configName, I18n i18n) {
         this.plugin = Objects.requireNonNull(plugin, "Plugin cannot be null");
         this.configName = Objects.requireNonNull(configName, "Config name cannot be null");
         this.configFile = new File(plugin.getDataFolder(), configName);
+        this.i18n = i18n;
         // 初始化时直接加载和同步
         loadAndSync();
+    }
+    
+    /**
+     * 获取国际化消息，如果 i18n 为 null 则返回默认消息
+     */
+    private String getMessage(String key, Object... args) {
+        if (i18n != null) {
+            return i18n.as(key, false, args);
+        }
+        // 默认英文消息
+        String msg = switch (key) {
+            case "ConfigUtil.NotInJar" -> "Config file '%s' not found in plugin jar, skipping version check.";
+            case "ConfigUtil.LocalVersion" -> "Current config version: %s, Latest config version: %s";
+            case "ConfigUtil.NewVersionDetected" -> "New version detected! Automatically updating configuration...";
+            case "ConfigUtil.UpdateComplete" -> "Config update complete! New version is %s.";
+            case "ConfigUtil.UpToDate" -> "You are using the latest config version.";
+            case "ConfigUtil.NotExist" -> "Config file does not exist, exporting default config from plugin resources.";
+            case "ConfigUtil.NotInResource" -> "Resource file '%s' not found in plugin jar, creating an empty file.";
+            case "ConfigUtil.Reloading" -> "Reloading configuration file...";
+            default -> key;
+        };
+        return (args != null && args.length > 0) ? String.format(msg, args) : msg;
     }
     
     /**
@@ -49,10 +83,10 @@ public class ConfigUtil {
         // 2. 加载磁盘上的配置文件
         this.config = YamlConfiguration.loadConfiguration(configFile);
 
-        // 3. 从 jar 中加载最新的配置文件以进行版本比较
-        FileConfiguration sourceConfig = loadConfigFromResource();
+        // 3. 从 jar 中加载最新的配置文件以进行版本比较（使用公共方法）
+        FileConfiguration sourceConfig = FileUtil.loadConfigFromResource(plugin, configName);
         if (sourceConfig == null) {
-            plugin.getLogger().warning("配置文件 '" + configName + "' 在插件 jar 中不存在. 跳过版本检查。");
+            plugin.getLogger().warning(String.format("[%s] %s", configName, getMessage("ConfigUtil.NotInJar", configName)));
             return;
         }
 
@@ -60,10 +94,10 @@ public class ConfigUtil {
         String localVersion = config.getString("version", "0.0");
         String sourceVersion = sourceConfig.getString("version", "0.0");
 
-        plugin.getLogger().info(String.format("[%s] 当前配置文件版本: %s, 最新配置文件版本: %s", configName, localVersion, sourceVersion));
+        plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("ConfigUtil.LocalVersion", localVersion, sourceVersion)));
 
         if (YmlUtil.isVersionNewer(sourceVersion, localVersion)) {
-            plugin.getLogger().warning(String.format("[%s] New version detected! Automatically updating configuration...", configName));
+            plugin.getLogger().warning(String.format("[%s] %s", configName, getMessage("ConfigUtil.NewVersionDetected")));
             
             // 使用 FileUtil 来补全文件，忽略版本号本身，因为它会被手动设置
             FileUtil.completeFile(plugin, configName, "version");
@@ -72,9 +106,9 @@ public class ConfigUtil {
             this.config = YamlConfiguration.loadConfiguration(configFile);
             this.config.set("version", sourceVersion);
             save(); // 保存更新后的版本号
-            plugin.getLogger().info(String.format("[%s] 配置文件更新完成！新版本是 %s。", configName, sourceVersion));
+            plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("ConfigUtil.UpdateComplete", sourceVersion)));
         } else {
-             plugin.getLogger().info(String.format("[%s] " + ChatColor.AQUA + "[√] 您当前正在使用的配置文件是最新版本。" + ChatColor.RESET, configName));
+             plugin.getLogger().info(String.format("[%s] " + ChatColor.AQUA + "[OK] %s" + ChatColor.RESET, configName, getMessage("ConfigUtil.UpToDate")));
         }
     }
 
@@ -86,10 +120,10 @@ public class ConfigUtil {
             // 使用 try-with-resources 确保流被关闭
             try (InputStream stream = plugin.getResource(configName)) {
                 if (stream != null) {
-                    plugin.getLogger().info(String.format("[%s] 配置文件不存在，正在从插件资源中导出默认配置文件。", configName));
+                    plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("ConfigUtil.NotExist")));
                     plugin.saveResource(configName, false);
                 } else {
-                    plugin.getLogger().warning(String.format("[%s] 资源文件 '%s' 在插件 jar 中不存在. 创建一个空文件。", configName, configName));
+                    plugin.getLogger().warning(String.format("[%s] %s", configName, getMessage("ConfigUtil.NotInResource", configName)));
                     // 即使资源不存在，也创建一个空文件，避免后续操作出错
                     configFile.createNewFile();
                 }
@@ -99,23 +133,6 @@ public class ConfigUtil {
         }
     }
     
-    /**
-     * 从插件资源中安全地加载配置。
-     * @return YamlConfiguration 对象，如果失败则返回 null。
-     */
-    private FileConfiguration loadConfigFromResource() {
-        try (InputStream stream = plugin.getResource(configName);
-             InputStreamReader reader = (stream != null) ? new InputStreamReader(stream, StandardCharsets.UTF_8) : null) {
-            if (reader == null) {
-                return null;
-            }
-            return YamlConfiguration.loadConfiguration(reader);
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to load resource: " + configName, e);
-            return null;
-        }
-    }
-
     /**
      * 获取已加载的 FileConfiguration 对象。
      *
@@ -133,7 +150,7 @@ public class ConfigUtil {
      * 从磁盘重新加载配置文件。
      */
     public void reload() {
-        plugin.getLogger().info(String.format("[%s] Reloading configuration file...", configName));
+        plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("ConfigUtil.Reloading")));
         loadAndSync();
     }
 

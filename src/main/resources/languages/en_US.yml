@@ -1,8 +1,13 @@
-version: "1.0"
+version: "1.2"
 
 # General
 loadedLanguage: "Loaded language file: {0}"
 Language: "English (US)"
+
+# Logo
+Logo:
+  Status: "Loading..."
+  SubTitle: "The Next Generation blbiLibrary\nSpigotMC: https://www.spigotmc.org/resources/125811/"
 
 # Update Checker
 UpdateChecker:
@@ -11,3 +16,24 @@ UpdateChecker:
   Error: "&cFailed to check for updates: {0}"
   UpToDate: "&aYou are running the latest version."
   FailedConnection: "&cCould not connect to update server: {0}"
+  ParseError: "&cCould not parse version from server version string, update check skipped."
+  ParseMCError: "&cCould not parse Minecraft version: {0}"
+  InvalidVersion: "&cCurrent plugin version format is invalid, cannot check for updates."
+  NoVersions: "&eCould not parse any version information from API response."
+
+# ConfigUtil
+ConfigUtil:
+  NotInJar: "&eConfig file '{0}' not found in plugin jar, skipping version check."
+  LocalVersion: "&7Current config version: {0}, Latest config version: {1}"
+  NewVersionDetected: "&aNew config version detected! Automatically updating configuration..."
+  UpdateComplete: "&aConfig update complete! New version is {0}."
+  UpToDate: "&aYou are using the latest config version."
+  NotExist: "&7Config file does not exist, exporting default config from plugin resources."
+  NotInResource: "&eResource file '{0}' not found in plugin jar, creating an empty file."
+  Reloading: "&7Reloading configuration file..."
+
+# FoliaUtil
+FoliaUtil:
+  FoliaDetected: "&aDetected Folia-compatible core, using Folia scheduler"
+  BukkitDetected: "&aDetected standard Bukkit core, using standard scheduler"
+  FoliaInitError: "&cDetected Folia environment, but failed to initialize Folia scheduler! Possibly version incompatible. Falling back to standard Bukkit scheduler."

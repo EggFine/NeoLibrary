@@ -1,18 +1,13 @@
 package com.blbilink.neoLibrary.utils;
 
-import com.blbilink.neoLibrary.NeoLibrary;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,6 +27,7 @@ public class CheckUpdateUtil {
     private final Plugin plugin;
     private final String resourceId; // SpigotMC上的资源ID
     private final I18n i18n;
+    private final FoliaUtil foliaUtil;
 
     // 使用Spiget API v2，它可以返回所有版本信息，并按日期降序排序
     private static final String SPIGET_API_URL = "https://api.spiget.org/v2/resources/%s/versions?sort=-releaseDate&size=2000";
@@ -39,17 +35,44 @@ public class CheckUpdateUtil {
     private static final Pattern VERSION_NAME_PATTERN = Pattern.compile("\"name\"\\s*:\\s*\"(.*?)\"");
     // 用于从Bukkit.getVersion()中提取MC版本的正则表达式
     private static final Pattern MC_VERSION_PATTERN = Pattern.compile("\\(MC: (\\d+\\.\\d+(\\.\\d+)?)\\)");
+    // 缓存点号分割的 Pattern，避免每次 split 时重新编译
+    private static final Pattern DOT_PATTERN = Pattern.compile("\\.");
 
     /**
      * 构造函数
      *
      * @param plugin     插件主类的实例 (this)
      * @param resourceId 插件在 SpigotMC 上的资源ID (resource ID)
+     * @param i18n       国际化实例（可以为 null，将使用默认消息）
+     * @param foliaUtil  FoliaUtil 实例（可以为 null，将自动创建）
+     */
+    public CheckUpdateUtil(Plugin plugin, String resourceId, I18n i18n, FoliaUtil foliaUtil) {
+        this.plugin = Objects.requireNonNull(plugin, "Plugin cannot be null");
+        this.resourceId = Objects.requireNonNull(resourceId, "Resource ID cannot be null");
+        this.i18n = i18n;
+        // 如果传入了 FoliaUtil 实例则使用它，否则创建新的（FoliaUtil 内部使用静态缓存）
+        this.foliaUtil = (foliaUtil != null) ? foliaUtil : new FoliaUtil(plugin, i18n);
+    }
+    
+    /**
+     * 构造函数（简化版本）
+     *
+     * @param plugin     插件主类的实例 (this)
+     * @param resourceId 插件在 SpigotMC 上的资源ID (resource ID)
+     * @param i18n       国际化实例（可以为 null，将使用默认消息）
+     */
+    public CheckUpdateUtil(Plugin plugin, String resourceId, I18n i18n) {
+        this(plugin, resourceId, i18n, null);
+    }
+    
+    /**
+     * 构造函数（简化版本，不带国际化支持）
+     *
+     * @param plugin     插件主类的实例 (this)
+     * @param resourceId 插件在 SpigotMC 上的资源ID (resource ID)
      */
     public CheckUpdateUtil(Plugin plugin, String resourceId) {
-        this.plugin = plugin;
-        this.resourceId = resourceId;
-        this.i18n = NeoLibrary.getInstance().getI18n();
+        this(plugin, resourceId, null, null);
     }
 
     /**
@@ -57,7 +80,7 @@ public class CheckUpdateUtil {
      * 建议在插件的 onEnable() 方法中调用此方法。
      */
     public void checkUpdate() {
-        Bukkit.getScheduler().runTaskAsynchronously(this.plugin, () -> {
+        foliaUtil.runTaskAsync(() -> {
             try {
                 java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
                 java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
@@ -70,8 +93,7 @@ public class CheckUpdateUtil {
                 java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
                 if (response.statusCode() != 200) {
-                    // plugin.getLogger().warning("无法检查更新: Spiget API 返回了 HTTP " + response.statusCode());
-                    plugin.getLogger().warning(i18n.as("UpdateChecker.Error", false, "HTTP " + response.statusCode()));
+                    plugin.getLogger().warning(getMessage("UpdateChecker.Error", "HTTP " + response.statusCode()));
                     return;
                 }
                 findAndCompareVersions(response.body());
@@ -79,10 +101,31 @@ public class CheckUpdateUtil {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt(); // 恢复中断状态
             } catch (Exception e) {
-                // plugin.getLogger().warning("无法连接到更新服务器: " + e.getMessage());
-                plugin.getLogger().warning(i18n.as("UpdateChecker.FailedConnection", false, e.getMessage()));
+                plugin.getLogger().warning(getMessage("UpdateChecker.FailedConnection", e.getMessage()));
             }
         });
+    }
+    
+    /**
+     * 获取国际化消息，如果 i18n 为 null 则返回默认消息
+     */
+    private String getMessage(String key, Object... args) {
+        if (i18n != null) {
+            return i18n.as(key, false, args);
+        }
+        // 默认英文消息
+        return switch (key) {
+            case "UpdateChecker.Error" -> "Failed to check for updates: " + (args.length > 0 ? args[0] : "");
+            case "UpdateChecker.FailedConnection" -> "Could not connect to update server: " + (args.length > 0 ? args[0] : "");
+            case "UpdateChecker.Found" -> "A new version is available: " + (args.length > 0 ? args[0] : "") + " (Current: " + (args.length > 1 ? args[1] : "") + ")";
+            case "UpdateChecker.Download" -> "Download it at: " + (args.length > 0 ? args[0] : "");
+            case "UpdateChecker.UpToDate" -> "You are running the latest version.";
+            case "UpdateChecker.ParseError" -> "Could not parse version from server version string, update check skipped.";
+            case "UpdateChecker.ParseMCError" -> "Could not parse Minecraft version: " + (args.length > 0 ? args[0] : "");
+            case "UpdateChecker.InvalidVersion" -> "Current plugin version format is invalid, cannot check for updates.";
+            case "UpdateChecker.NoVersions" -> "Could not parse any version information from API response.";
+            default -> key;
+        };
     }
 
     /**
@@ -95,19 +138,19 @@ public class CheckUpdateUtil {
         String serverVersionString = Bukkit.getVersion();
         Matcher mcMatcher = MC_VERSION_PATTERN.matcher(serverVersionString);
         if (!mcMatcher.find()) {
-            plugin.getLogger().warning("无法从服务器版本字符串中提取Minecraft版本, 更新检查跳过。");
+            plugin.getLogger().warning(getMessage("UpdateChecker.ParseError"));
             return;
         }
         VersionInfo serverGameVersion = parseVersion(mcMatcher.group(1));
         if (serverGameVersion == null) {
-            plugin.getLogger().warning("无法解析服务器Minecraft版本: " + mcMatcher.group(1));
+            plugin.getLogger().warning(getMessage("UpdateChecker.ParseMCError", mcMatcher.group(1)));
             return;
         }
 
         // 2. 获取并解析当前安装的插件版本
         VersionInfo currentPluginVersion = parseVersion(plugin.getDescription().getVersion());
         if (currentPluginVersion == null) {
-            plugin.getLogger().warning("当前插件版本号格式不正确，无法检查更新。");
+            plugin.getLogger().warning(getMessage("UpdateChecker.InvalidVersion"));
             return;
         }
 
@@ -118,7 +161,7 @@ public class CheckUpdateUtil {
             allOnlineVersions.add(matcher.group(1));
         }
         if (allOnlineVersions.isEmpty()) {
-            plugin.getLogger().info("未能从API响应中解析出任何版本信息。");
+            plugin.getLogger().info(getMessage("UpdateChecker.NoVersions"));
             return;
         }
 
@@ -141,15 +184,11 @@ public class CheckUpdateUtil {
         // 5. 进行最终比较
         if (latestCompatibleVersion != null && compareVersions(latestCompatibleVersion, currentPluginVersion) > 0) {
             plugin.getLogger().info("=========================================================");
-            // plugin.getLogger().info("插件 " + plugin.getName() + " 有一个针对您服务器版本的更新！");
-            plugin.getLogger().info(i18n.as("UpdateChecker.Found", false, latestCompatibleVersion.toFullString(), currentPluginVersion.toFullString()));
-            // plugin.getLogger().info("最新版本: " + latestCompatibleVersion.toFullString());
-            // plugin.getLogger().info("请前往SpigotMC页面下载更新。");
-            plugin.getLogger().info(i18n.as("UpdateChecker.Download", false, "https://www.spigotmc.org/resources/" + resourceId));
+            plugin.getLogger().info(getMessage("UpdateChecker.Found", latestCompatibleVersion.toFullString(), currentPluginVersion.toFullString()));
+            plugin.getLogger().info(getMessage("UpdateChecker.Download", "https://www.spigotmc.org/resources/" + resourceId));
             plugin.getLogger().info("=========================================================");
         } else {
-            // plugin.getLogger().info(plugin.getName() + " 已是当前游戏版本的最新版。");
-            plugin.getLogger().info(i18n.as("UpdateChecker.UpToDate", false));
+            plugin.getLogger().info(getMessage("UpdateChecker.UpToDate"));
         }
     }
 
@@ -165,7 +204,7 @@ public class CheckUpdateUtil {
             return null;
         }
         versionStr = versionStr.trim().replaceAll("^[vV]", "");
-        String[] parts = versionStr.split("\\.");
+        String[] parts = DOT_PATTERN.split(versionStr);
 
         String gameVersion;
         int buildNumber = 0;
@@ -186,7 +225,7 @@ public class CheckUpdateUtil {
         }
 
         // 标准化游戏版本字符串，确保其至少有三个部分 (e.g., "1.21" -> "1.21.0")
-        String[] gameParts = gameVersion.split("\\.");
+        String[] gameParts = DOT_PATTERN.split(gameVersion);
         if (gameParts.length == 2) {
             gameVersion += ".0";
         } else if (gameParts.length == 1) {
@@ -195,7 +234,7 @@ public class CheckUpdateUtil {
 
         // 基本的有效性检查
         try {
-            String[] finalParts = gameVersion.split("\\.");
+            String[] finalParts = DOT_PATTERN.split(gameVersion);
             if (finalParts.length < 3) return null;
             Integer.parseInt(finalParts[0]);
             Integer.parseInt(finalParts[1]);
@@ -219,9 +258,9 @@ public class CheckUpdateUtil {
         if (versionB == null) return 1;
 
         try {
-            // 1. 比较游戏版本
-            String[] partsA = versionA.getGameVersion().split("\\.");
-            String[] partsB = versionB.getGameVersion().split("\\.");
+            // 1. 比较游戏版本（使用缓存的 Pattern）
+            String[] partsA = DOT_PATTERN.split(versionA.getGameVersion());
+            String[] partsB = DOT_PATTERN.split(versionB.getGameVersion());
             int len = Math.max(partsA.length, partsB.length);
             for (int i = 0; i < len; i++) {
                 int partA = (i < partsA.length) ? Integer.parseInt(partsA[i]) : 0;

@@ -20,6 +20,27 @@ import java.util.logging.Level;
 public final class FileUtil {
 
     /**
+     * 从插件资源中安全地加载 YamlConfiguration。
+     * 这是一个公共方法，可被 I18n、ConfigUtil 等类复用。
+     *
+     * @param plugin       插件实例
+     * @param resourcePath 资源路径
+     * @return 加载的配置，如果失败则返回 null
+     */
+    public static YamlConfiguration loadConfigFromResource(Plugin plugin, String resourcePath) {
+        try (InputStream stream = plugin.getResource(resourcePath);
+             InputStreamReader reader = (stream != null) ? new InputStreamReader(stream, StandardCharsets.UTF_8) : null) {
+            if (reader == null) {
+                return null;
+            }
+            return YamlConfiguration.loadConfiguration(reader);
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to load resource: " + resourcePath, e);
+            return null;
+        }
+    }
+
+    /**
      * 补全配置文件（键、值、注释等）。
      * 如果本地文件不存在，会从插件资源中创建。
      *
@@ -58,30 +79,72 @@ public final class FileUtil {
      * 强制同步语言文件，确保本地文件与插件内的文件结构一致。
      *
      * @param plugin       插件实例
-     * @param syncChinese  如果为true，则以 zh_CN.yml 为源，否则以 resourceFile 为源
+     * @param syncFromDefault  如果为true，则以默认语言文件 (zh_CN.yml) 为源同步键结构，否则以 resourceFile 为源
      * @param resourceFile 目标资源文件路径
      */
-    public static void completeLangFile(Plugin plugin, boolean syncChinese, String resourceFile) {
-        String sourceResource = syncChinese ? "languages/zh_CN.yml" : resourceFile;
-        updateConfiguration(plugin, resourceFile, (source, target) -> {
-            // 添加或覆盖所有键值和注释
-            source.getKeys(true).forEach(key -> {
-                target.set(key, source.get(key));
-                if (!Objects.equals(source.getComments(key), target.getComments(key))) {
-                    target.setComments(key, source.getComments(key));
+    public static void completeLangFile(Plugin plugin, boolean syncFromDefault, String resourceFile) {
+        // 确定源文件路径：如果 syncFromDefault 为 true，使用默认语言文件作为结构源
+        String sourceResourcePath = syncFromDefault ? "languages/zh_CN.yml" : resourceFile;
+        
+        File targetFile = new File(plugin.getDataFolder(), resourceFile);
+        
+        // 确保目标文件存在
+        if (!targetFile.exists()) {
+            try (InputStream stream = plugin.getResource(resourceFile)) {
+                if (stream != null) {
+                    plugin.saveResource(resourceFile, false);
+                } else {
+                    plugin.getLogger().warning("Resource '" + resourceFile + "' not found in plugin jar. Cannot complete file.");
+                    return;
+                }
+            } catch (IOException e) {
+                plugin.getLogger().log(Level.SEVERE, "Error accessing resource '" + resourceFile + "'", e);
+                return;
+            }
+        }
+        
+        // 加载源配置（可能是默认语言或目标语言自身）和目标配置
+        try (InputStream sourceStream = plugin.getResource(sourceResourcePath);
+             InputStreamReader sourceReader = new InputStreamReader(Objects.requireNonNull(sourceStream, "Source resource stream cannot be null"), StandardCharsets.UTF_8)) {
+            
+            YamlConfiguration sourceConfig = YamlConfiguration.loadConfiguration(sourceReader);
+            YamlConfiguration targetConfig = YamlConfiguration.loadConfiguration(targetFile);
+
+            // 同步键结构（只添加缺失的键，不覆盖已有值）
+            sourceConfig.getKeys(true).forEach(key -> {
+                // 如果是从默认语言同步，只添加缺失的键结构，保留目标文件的值
+                if (syncFromDefault) {
+                    if (!targetConfig.contains(key)) {
+                        targetConfig.set(key, sourceConfig.get(key));
+                    }
+                } else {
+                    // 如果是从自身源同步，覆盖所有值
+                    targetConfig.set(key, sourceConfig.get(key));
+                }
+                // 同步注释
+                if (!Objects.equals(sourceConfig.getComments(key), targetConfig.getComments(key))) {
+                    targetConfig.setComments(key, sourceConfig.getComments(key));
                 }
             });
 
-            // 移除本地存在但源文件中不存在的键
-            target.getKeys(true).stream()
-                  .filter(key -> !source.contains(key))
-                  .forEach(key -> target.set(key, null));
+            // 如果不是从默认语言同步，移除本地存在但源文件中不存在的键
+            if (!syncFromDefault) {
+                targetConfig.getKeys(true).stream()
+                      .filter(key -> !sourceConfig.contains(key))
+                      .forEach(key -> targetConfig.set(key, null));
+            }
 
             // 更新文件头
-             if (!Objects.equals(source.options().header(), target.options().header())) {
-                target.options().header(source.options().header());
+            if (!Objects.equals(sourceConfig.options().header(), targetConfig.options().header())) {
+                targetConfig.options().header(sourceConfig.options().header());
             }
-        });
+
+            // 保存更改
+            targetConfig.save(targetFile);
+
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to complete language file: '" + resourceFile + "'", e);
+        }
     }
     
     /**
@@ -133,7 +196,7 @@ public final class FileUtil {
      * 使用 java.nio.file API，更加现代和可靠。
      *
      * @param dirFile 要删除的目录
-     * @return 如果成功删除则返回 true，否则返回 false
+     * @return 如果成功删除所有文件则返回 true，否则返回 false
      */
     @CanIgnoreReturnValue
     public static boolean deleteDir(File dirFile) {
@@ -143,14 +206,20 @@ public final class FileUtil {
 
         Path path = dirFile.toPath();
         try {
+            // 使用 AtomicBoolean 来追踪删除是否全部成功
+            java.util.concurrent.atomic.AtomicBoolean allDeleted = new java.util.concurrent.atomic.AtomicBoolean(true);
+            
             Files.walk(path)
                  .sorted(Comparator.reverseOrder()) // 必须反向排序，先删除文件再删除目录
-                 .map(Path::toFile)
-                 .forEach(File::delete);
-            return true;
+                 .forEach(p -> {
+                     try {
+                         Files.delete(p);
+                     } catch (IOException e) {
+                         allDeleted.set(false);
+                     }
+                 });
+            return allDeleted.get();
         } catch (IOException e) {
-            // 如果需要，可以在这里添加日志记录
-            // e.printStackTrace();
             return false;
         }
     }

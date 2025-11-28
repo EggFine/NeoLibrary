@@ -1,3 +1,5 @@
+version: "1.0"
+
 Settings:
   # Language file name (without .yml suffix)
   # Available: zh_CN, en_US
