@@ -7,7 +7,7 @@ plugins {
 
 group = 'com.blbilink'
 
-def baseVersion = "1.21.1"
+def baseVersion = "1.21.8"
 // 从环境变量读取 CI 提供的构建号
 def buildNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "SNAPSHOT"
 version = "${baseVersion}.${buildNumber}"
@@ -30,8 +30,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
-    compileOnly "dev.folia:folia-api:1.21.1-R0.1-SNAPSHOT"
+    compileOnly("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly "dev.folia:folia-api:1.21.8-R0.1-SNAPSHOT"
     compileOnly 'com.google.errorprone:error_prone_annotations:2.28.0'
 
     implementation 'com.zaxxer:HikariCP:5.1.0'
