@@ -240,7 +240,7 @@ new CheckUpdateUtil(plugin, "你的_SPIGOT_资源_ID", i18n, foliaUtil).checkUpd
 | 功能 | NeoLibrary | blbiLibrary |
 |------|:----------:|:-----------:|
 | **Java 版本** | Java 21+ | Java 8+ |
-| **Minecraft 版本** | 1.21.1+ | 1.16+ |
+| **Minecraft 版本** | 1.21.8+ | 1.16+ |
 | **Folia 支持** | ✅ 原生 | ❌ |
 | **数据库类型** | 4 种（SQLite、MySQL、MariaDB、PostgreSQL） | 1 种（SQLite） |
 | **连接池** | ✅ HikariCP | ❌ |
@@ -266,7 +266,7 @@ new CheckUpdateUtil(plugin, "你的_SPIGOT_资源_ID", i18n, foliaUtil).checkUpd
 | 要求 | 版本 |
 |------|------|
 | **Java** | 21+ |
-| **Minecraft 服务器** | 1.21.1+ |
+| **Minecraft 服务器** | 1.21.8+ |
 | **服务器核心** | Spigot / Paper / Folia |
 
 ---
