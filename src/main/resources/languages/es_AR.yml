@@ -1,0 +1,131 @@
+version: "1.0.0"
+
+# General
+languageName: "Español (Spanish)"
+loadedLanguage: "Archivo de idioma global cargado: %s"
+
+# Startup Banner
+logo:
+  status: "Loading..."
+  subTitle: "The Next Generation blbiLibrary\nSpigotMC: https://www.spigotmc.org/resources/125811/"
+
+# Shared Base Messages (Inherited automatically by all Neo series plugins)
+common:
+  noPermission: "&c¡No tenés permiso para ejecutar este comando!"
+  onlyPlayer: "&c¡Este comando solo puede ser ejecutado por un jugador!"
+  onlyConsole: "&c¡Este comando solo puede ejecutarse desde la consola!"
+  playerNotFound: "&c¡Jugador no encontrado!"
+  playerNotOnline: "&c¡El jugador objetivo no está conectado!"
+  reloaded: "&a¡Configuración e idioma global recargados correctamente!"
+  reloadFailed: "&c¡Error al recargar la configuración!"
+  invalidArgs: "&cInvalid command arguments."
+  "yes": "&aSí"
+  "no": "&cNo"
+  enabled: "&aActivado"
+  disabled: "&cDesactivado"
+  unknown: "N/A"
+  online: "&aOnline"
+  offline: "&7Offline"
+
+# Universal GUI Configuration Framework (Shared across all Neo plugins)
+gui:
+  titleSuite: "&8Neo Suite - Plugin Hub"
+  titleHub: "&8%s - Configuration"
+  titleCategory: "&8%s > %s"
+  titleSearch: "&8%s - Search: %s"
+  titleList: "&8%s - List: %s"
+  suiteVersion: "&7Plugin Version: &f%s"
+  categoryItems: "&7Contains &f%d &7settings"
+  categoryEnter: "&eClick to open category"
+  inCategory: "&8Category: %s"
+  previousPage: "&ePágina anterior"
+  nextPage: "&ePágina siguiente"
+  pageInfo: "&7Page &f%d &7/ &f%d"
+  search: "&bBuscar ajustes"
+  searchCurrent: "&7Active filter: &f%s"
+  searchNone: "&7No active filter"
+  searchClick: "&eLeft-click to enter keyword in chat"
+  searchClear: "&cRight-click to clear filter & return"
+  searchPrompt: "&eEnter search keyword in chat (type &ccancel &eto abort):"
+  searchEmpty: "&cNo matching settings found"
+  back: "&eVolver"
+  backLore: "&7Click to return to previous menu"
+  close: "&cCerrar"
+  reload: "&aRecargar y aplicar"
+  reloadLore: "&7Click to reload plugin configuration immediately"
+  pluginSuite: "&bNeo Suite Switcher"
+  pluginSuiteLore: "&7Switch between installed Neo series plugins"
+  keyLabel: "&8Key: %s"
+  currentValue: "&7Current: &f%s"
+  maskedValue: "&8****** (Hidden)"
+  booleanTrue: "&aEnabled (true)"
+  booleanFalse: "&cDisabled (false)"
+  actionToggle: "&eClick to toggle state"
+  actionCycle: "&eLeft-click next | Right-click previous"
+  actionNumber: "&eL-Click +%s | R-Click -%s | Shift ±%s | Drop to type"
+  actionText: "&eClick to type new value in chat"
+  actionList: "&eClick to open list editor (&f%d &eitems)"
+  actionRun: "&eClick to execute"
+  editPrompt: "&eEnter new value for &f%s &7(Current: %s, type &ccancel &7to abort):"
+  editPromptMasked: "&eEnter new value for &f%s &7(type &ccancel &7to abort):"
+  editCancelled: "&eEdit cancelled, returning to configuration menu..."
+  editSaved: "&aSaved &f%s &a-> &e%s"
+  invalidNumber: "&cInvalid number format: %s"
+  numberOutOfRange: "&cValue out of allowed range (%s ~ %s)."
+  listAdd: "&aAdd New Entry"
+  listAddLore: "&eClick to append a new entry via chat"
+  listAddPrompt: "&eEnter new entry to append to &f%s &7(type &ccancel &7to abort):"
+  listItemRemove: "&cShift + Right-click to remove entry"
+  listIndex: "&8Index #%d"
+
+# Update Checker
+updateChecker:
+  found: "&aA new version is available: &e%s &7(Current: %s)"
+  download: "&aDownload it at: &e%s"
+  error: "&cFailed to check for updates: %s"
+  upToDate: "&aYou are running the latest version."
+  failedConnection: "&cCould not connect to update server: %s"
+  parseError: "&cCould not parse Minecraft version from server string, update check skipped."
+  parseMcError: "&cCould not parse Minecraft version: %s"
+  invalidVersion: "&cCurrent plugin version format is invalid, cannot check for updates."
+  noVersions: "&eCould not parse any version information from API response."
+
+# ConfigUtil
+configUtil:
+  notInJar: "&eConfig file '%s' not found in plugin jar, skipping version check."
+  localVersion: "&7Current config version: %s, Latest config version: %s"
+  newVersionDetected: "&aNew config version detected! Automatically synchronizing configuration..."
+  updateComplete: "&aConfig update complete! New version is %s."
+  upToDate: "&aYou are using the latest config version."
+  notExist: "&7Config file does not exist, exporting default config from resources."
+  notInResource: "&eResource file '%s' not found in plugin jar, creating an empty file."
+  reloading: "&7Reloading configuration file..."
+
+# FoliaUtil
+foliaUtil:
+  foliaDetected: "&aDetected Folia-compatible core, using Folia scheduler"
+  bukkitDetected: "&aDetected standard Bukkit core, using standard scheduler"
+  foliaInitError: "&cDetected Folia environment, but failed to initialize Folia scheduler! Falling back to Bukkit scheduler."
+
+# NeoLibrary Commands
+command:
+  help:
+    header: "&6===== NeoLibrary Global Help ====="
+    gui: "&e/neolibrary gui &7- Open NeoLibrary GUI configuration"
+    suite: "&e/neolibrary suite &7- Open Neo Suite plugin configuration hub"
+    reload: "&e/neolibrary reload &7- Reload global config & sync all Neo plugins"
+
+# NeoLibrary Own GUI Config Labels
+guiConfig:
+  category:
+    general: "&e&lGlobal & General Settings"
+  categoryDesc:
+    general: "&7Unified global language, message prefix, and update checker for the Neo suite"
+  item:
+    prefix: "&bMessage Prefix"
+    language: "&bNeo Global Language"
+    checkUpdate: "&bCheck Updates on Startup"
+  desc:
+    prefix: "&7Color prefix displayed before NeoLibrary messages"
+    language: "&7All installed Neo series plugins automatically synchronize with this language"
+    checkUpdate: "&7Automatically check Spiget API for new releases on server startup"

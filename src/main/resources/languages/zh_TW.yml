@@ -1,0 +1,131 @@
+version: "1.0.0"
+
+# General
+languageName: "繁體中文 (台灣)"
+loadedLanguage: "已載入全域語言檔案: %s"
+
+# Startup Banner
+logo:
+  status: "載入中..."
+  subTitle: "下一代 blbiLibrary\nSpigotMC: https://www.spigotmc.org/resources/125811/"
+
+# Shared Base Messages (Inherited automatically by all Neo series plugins)
+common:
+  noPermission: "&c您沒有權限執行此指令！"
+  onlyPlayer: "&c此指令只能由玩家在遊戲內執行！"
+  onlyConsole: "&c此指令只能在主控台執行！"
+  playerNotFound: "&c找不到指定的玩家！"
+  playerNotOnline: "&c目標玩家目前不在線上！"
+  reloaded: "&a設定檔與全域語言重新載入成功！"
+  reloadFailed: "&c設定檔重新載入失敗，請檢查後台日誌！"
+  invalidArgs: "&c指令參數格式不正確！"
+  "yes": "&a是"
+  "no": "&c否"
+  enabled: "&a已啟用"
+  disabled: "&c已停用"
+  unknown: "未知"
+  online: "&a線上"
+  offline: "&7離線"
+
+# Universal GUI Configuration Framework (Shared across all Neo plugins)
+gui:
+  titleSuite: "&8Neo 套件 - 外掛設定中心"
+  titleHub: "&8%s - 設定中心"
+  titleCategory: "&8%s > %s"
+  titleSearch: "&8%s - 搜尋: %s"
+  titleList: "&8%s - 清單: %s"
+  suiteVersion: "&7外掛版本: &f%s"
+  categoryItems: "&7包含 &f%d &7個設定項"
+  categoryEnter: "&e點擊開啟此分類"
+  inCategory: "&8所屬分類: %s"
+  previousPage: "&e上一頁"
+  nextPage: "&e下一頁"
+  pageInfo: "&7第 &f%d &7/ &f%d &7頁"
+  search: "&b搜尋設定項"
+  searchCurrent: "&7目前關鍵字: &f%s"
+  searchNone: "&7目前未啟用關鍵字篩選"
+  searchClick: "&e左鍵點擊在聊天欄輸入搜尋詞"
+  searchClear: "&c右鍵點擊清除搜尋並返回"
+  searchPrompt: "&e請在聊天欄輸入要搜尋的設定名稱或鍵名（輸入 &ccancel &e取消）："
+  searchEmpty: "&c找不到符合的設定項"
+  back: "&e返回上一層"
+  backLore: "&7點擊返回上一頁選單"
+  close: "&c關閉選單"
+  reload: "&a重新載入並套用"
+  reloadLore: "&7點擊立即重新載入外掛使修改生效"
+  pluginSuite: "&bNeo 外掛切換中心"
+  pluginSuiteLore: "&7點擊切換並管理其他已安裝的 Neo 系列外掛"
+  keyLabel: "&8設定鍵: %s"
+  currentValue: "&7目前值: &f%s"
+  maskedValue: "&8****** (已隱藏)"
+  booleanTrue: "&a已啟用 (true)"
+  booleanFalse: "&c已停用 (false)"
+  actionToggle: "&e點擊切換開關狀態"
+  actionCycle: "&e左鍵下一個選項 | 右鍵上一個選項"
+  actionNumber: "&e左鍵 +%s | 右鍵 -%s | Shift ±%s | Q鍵輸入精確值"
+  actionText: "&e點擊在聊天欄輸入新內容"
+  actionList: "&e點擊開啟清單編輯器 (共 &f%d &e項)"
+  actionRun: "&e點擊立即執行"
+  editPrompt: "&e請在聊天欄輸入 &f%s &e的新值 &7(目前: %s，輸入 &ccancel &7取消)："
+  editPromptMasked: "&e請在聊天欄輸入 &f%s &e的新值 &7(輸入 &ccancel &7取消)："
+  editCancelled: "&e已取消修改，正在返回設定選單..."
+  editSaved: "&a已儲存設定 &f%s &a-> &e%s"
+  invalidNumber: "&c輸入的數字格式無效: %s"
+  numberOutOfRange: "&c數值超出允許範圍 (%s ~ %s)！"
+  listAdd: "&a新增清單項目"
+  listAddLore: "&e點擊在聊天欄輸入要追加的新項目"
+  listAddPrompt: "&e請在聊天欄輸入要新增至 &f%s &e的項目 &7(輸入 &ccancel &7取消)："
+  listItemRemove: "&cShift + 右鍵點擊刪除此項目"
+  listIndex: "&8序號 #%d"
+
+# Update Checker
+updateChecker:
+  found: "&a發現新版本: &e%s &7(目前版本: %s)"
+  download: "&a下載網址: &e%s"
+  error: "&c檢查更新失敗: %s"
+  upToDate: "&a目前執行的已是最新版本。"
+  failedConnection: "&c無法連線至更新伺服器: %s"
+  parseError: "&c無法從伺服器版本字串擷取 Minecraft 版本，已略過更新檢查。"
+  parseMcError: "&c無法解析伺服器 Minecraft 版本: %s"
+  invalidVersion: "&c目前外掛程式版本格式不正確，無法檢查更新。"
+  noVersions: "&e未能從 API 回應中解析出任何版本資訊。"
+
+# ConfigUtil
+configUtil:
+  notInJar: "&e設定檔 '%s' 在外掛 jar 中不存在，略過版本檢查。"
+  localVersion: "&7目前設定檔版本: %s, 最新設定檔版本: %s"
+  newVersionDetected: "&a偵測到新版設定檔！正在自動同步設定..."
+  updateComplete: "&a設定檔更新完成！新版本為 %s。"
+  upToDate: "&a目前設定檔已是最新版本。"
+  notExist: "&7設定檔不存在，正在匯出預設設定檔。"
+  notInResource: "&e資源檔 '%s' 在 jar 中不存在，建立空白檔案。"
+  reloading: "&7正在重新載入設定檔..."
+
+# FoliaUtil
+foliaUtil:
+  foliaDetected: "&a偵測到相容 Folia 核心，正在使用 Folia 排程器"
+  bukkitDetected: "&a偵測到標準 Bukkit 核心，正在使用標準排程器"
+  foliaInitError: "&c偵測到 Folia 環境，但初始化排程器失敗！將回退至標準排程器。"
+
+# NeoLibrary Commands
+command:
+  help:
+    header: "&6===== NeoLibrary 全域設定說明 ====="
+    gui: "&e/neolibrary gui &7- 開啟 NeoLibrary 視覺化設定介面"
+    suite: "&e/neolibrary suite &7- 開啟 Neo 系列外掛全域設定切換中心"
+    reload: "&e/neolibrary reload &7- 重新載入全域設定並同步所有 Neo 外掛語言"
+
+# NeoLibrary Own GUI Config Labels
+guiConfig:
+  category:
+    general: "&e&l全域與一般設定"
+  categoryDesc:
+    general: "&7統一控制 Neo 系列外掛的全域語言、訊息前綴與更新檢查"
+  item:
+    prefix: "&b外掛訊息前綴"
+    language: "&bNeo 全域統一語言"
+    checkUpdate: "&b啟動時檢查更新"
+  desc:
+    prefix: "&7顯示於 NeoLibrary 提示訊息前的顏色前綴"
+    language: "&7切換後所有已安裝的 Neo 系列外掛將自動同步使用該語言"
+    checkUpdate: "&7於伺服器啟動時自動透過 Spiget API 檢查新版本"

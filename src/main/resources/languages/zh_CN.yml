@@ -1,22 +1,91 @@
 version: "1.0.0"
 
 # General
-languageName: "简体中文 (中国)"
-loadedLanguage: "已加载语言文件: %s"
+languageName: "简体中文 (Simplified Chinese)"
+loadedLanguage: "已加载全局语言文件: %s"
 
-# Logo
+# Startup Banner
 logo:
   status: "加载中..."
   subTitle: "下一代 blbiLibrary\nSpigotMC: https://www.spigotmc.org/resources/125811/"
+
+# Shared Base Messages (Inherited automatically by all Neo series plugins)
+common:
+  noPermission: "&c您没有权限执行此命令！"
+  onlyPlayer: "&c该命令只能由玩家在游戏内执行！"
+  onlyConsole: "&c该命令只能在后台控制台执行！"
+  playerNotFound: "&c找不到指定的玩家！"
+  playerNotOnline: "&c目标玩家当前不在线！"
+  reloaded: "&a配置文件与全局语言重载成功！"
+  reloadFailed: "&c配置文件重载失败，请检查后台日志！"
+  invalidArgs: "&c命令参数格式不正确！"
+  "yes": "&a是"
+  "no": "&c否"
+  enabled: "&a已启用"
+  disabled: "&c已禁用"
+  unknown: "未知"
+  online: "&a在线"
+  offline: "&7离线"
+
+# Universal GUI Configuration Framework (Shared across all Neo plugins)
+gui:
+  titleSuite: "&8Neo 套件 - 插件配置中心"
+  titleHub: "&8%s - 配置中心"
+  titleCategory: "&8%s > %s"
+  titleSearch: "&8%s - 搜索: %s"
+  titleList: "&8%s - 列表: %s"
+  suiteVersion: "&7插件版本: &f%s"
+  categoryItems: "&7包含 &f%d &7个配置项"
+  categoryEnter: "&e点击打开此分类"
+  inCategory: "&8所属分类: %s"
+  previousPage: "&e上一页"
+  nextPage: "&e下一页"
+  pageInfo: "&7第 &f%d &7/ &f%d &7页"
+  search: "&b搜索配置项"
+  searchCurrent: "&7当前关键词: &f%s"
+  searchNone: "&7当前未启用关键词筛选"
+  searchClick: "&e左键点击在聊天栏输入搜索词"
+  searchClear: "&c右键点击清除搜索并返回"
+  searchPrompt: "&e请在聊天栏输入要搜索的配置名称或键名（输入 &ccancel &e取消）："
+  searchEmpty: "&c未找到匹配的配置项"
+  back: "&e返回上一级"
+  backLore: "&7点击返回上一页菜单"
+  close: "&c关闭菜单"
+  reload: "&a重载并应用配置"
+  reloadLore: "&7点击立即重载插件使修改生效"
+  pluginSuite: "&bNeo 插件切换中心"
+  pluginSuiteLore: "&7点击切换并管理其他已安装的 Neo 系列插件"
+  keyLabel: "&8配置键: %s"
+  currentValue: "&7当前值: &f%s"
+  maskedValue: "&8****** (已隐藏)"
+  booleanTrue: "&a已启用 (true)"
+  booleanFalse: "&c已禁用 (false)"
+  actionToggle: "&e点击切换开关状态"
+  actionCycle: "&e左键下一个选项 | 右键上一个选项"
+  actionNumber: "&e左键 +%s | 右键 -%s | Shift ±%s | Q键输入精确值"
+  actionText: "&e点击在聊天栏输入新内容"
+  actionList: "&e点击打开列表编辑器 (共 &f%d &e项)"
+  actionRun: "&e点击立即执行"
+  editPrompt: "&e请在聊天栏输入 &f%s &e的新值 &7(当前: %s，输入 &ccancel &7取消)："
+  editPromptMasked: "&e请在聊天栏输入 &f%s &e的新值 &7(输入 &ccancel &7取消)："
+  editCancelled: "&e已取消修改，正在返回配置菜单..."
+  editSaved: "&a已保存配置 &f%s &a-> &e%s"
+  invalidNumber: "&c输入的数字格式无效: %s"
+  numberOutOfRange: "&c数值超出允许范围 (%s ~ %s)！"
+  listAdd: "&a新增列表条目"
+  listAddLore: "&e点击在聊天栏输入要追加的新条目"
+  listAddPrompt: "&e请在聊天栏输入要添加到 &f%s &e的新条目 &7(输入 &ccancel &7取消)："
+  listItemRemove: "&cShift + 右键点击删除此条目"
+  listIndex: "&8序号 #%d"
 
 # Update Checker
 updateChecker:
   found: "&a发现新版本: &e%s &7(当前版本: %s)"
   download: "&a下载地址: &e%s"
   error: "&c检查更新失败: %s"
-  upToDate: "&a当前已是最新版本。"
+  upToDate: "&a当前运行的已是最新版本。"
   failedConnection: "&c无法连接到更新服务器: %s"
-  parseError: "&c无法从服务器版本字符串中提取 Minecraft 版本，更新检查已跳过。"
+  parseError: "&c无法从服务器版本字符串中提取 Minecraft 版本，已跳过更新检查。"
   parseMcError: "&c无法解析服务器 Minecraft 版本: %s"
   invalidVersion: "&c当前插件版本号格式不正确，无法检查更新。"
   noVersions: "&e未能从 API 响应中解析出任何版本信息。"
@@ -27,7 +96,7 @@ configUtil:
   localVersion: "&7当前配置文件版本: %s, 最新配置文件版本: %s"
   newVersionDetected: "&a检测到配置文件有新版本！正在自动更新配置..."
   updateComplete: "&a配置文件更新完成！新版本是 %s。"
-  upToDate: "&a您当前正在使用的配置文件是最新版本。"
+  upToDate: "&a当前配置文件已是最新版本。"
   notExist: "&7配置文件不存在，正在从插件资源中导出默认配置文件。"
   notInResource: "&e资源文件 '%s' 在插件 jar 中不存在，创建一个空文件。"
   reloading: "&7正在重新加载配置文件..."
@@ -36,4 +105,27 @@ configUtil:
 foliaUtil:
   foliaDetected: "&a检测到兼容 Folia 核心，正在使用 Folia 调度器"
   bukkitDetected: "&a检测到标准 Bukkit 核心，正在使用标准调度器"
-  foliaInitError: "&c检测到 Folia 环境，但初始化 Folia 调度器时发生错误！可能是版本不兼容，将回退至标准 Bukkit 调度器。"
+  foliaInitError: "&c检测到 Folia 环境，但初始化 Folia 调度器失败！将回退至标准 Bukkit 调度器。"
+
+# NeoLibrary Commands
+command:
+  help:
+    header: "&6===== NeoLibrary 全局配置帮助 ====="
+    gui: "&e/neolibrary gui &7- 打开 NeoLibrary 可视化配置界面"
+    suite: "&e/neolibrary suite &7- 打开 Neo 系列插件全局配置切换中心"
+    reload: "&e/neolibrary reload &7- 重载全局配置并同步所有 Neo 插件语言"
+
+# NeoLibrary Own GUI Config Labels
+guiConfig:
+  category:
+    general: "&e&l全局与常规设置"
+  categoryDesc:
+    general: "&7统一控制 Neo 系列插件的全局语言、消息前缀与更新检查"
+  item:
+    prefix: "&b插件消息前缀"
+    language: "&bNeo 全局统一语言"
+    checkUpdate: "&b启动时检查更新"
+  desc:
+    prefix: "&7显示在 NeoLibrary 提示消息前的颜色前缀"
+    language: "&7切换后所有已安装的 Neo 系列插件将自动同步使用该语言"
+    checkUpdate: "&7在服务器启动时自动通过 Spiget API 检查新版本"

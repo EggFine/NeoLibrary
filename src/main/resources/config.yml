@@ -1,12 +1,14 @@
-# NeoLibrary Configuration / NeoLibrary 配置文件
+# NeoLibrary Global Configuration / NeoLibrary 全局配置文件
 version: "1.0.0"
 
 # Message prefix / 插件消息前缀
 prefix: "&8[&fNeo&bLibrary&8] &f"
 
-# Language file name (without .yml) / 语言文件名（不含 .yml 后缀）
-# Available: zh_CN, en_US
+# Global language for all Neo series plugins (without .yml)
+# Neo 系列插件全局统一语言设置（所有 Neo 插件将自动跟随此语言，无需单独配置）
+# Available / 可选语言:
+# zh_CN, zh_TW, zh_HK, en_US, en_GB, ja_JP, ru_RU, de_DE, fr_FR, es_AR, pt_BR, ar_SA
 language: zh_CN
 
-# Check for plugin updates on startup / 启动时检查更新
+# Check for plugin updates on startup / 启动时自动检查更新
 checkUpdate: true

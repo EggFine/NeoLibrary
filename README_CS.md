@@ -19,7 +19,7 @@
 
 ## 项目概述
 
-**NeoLibrary** 是专为 Minecraft `1.21+` 服务端设计的底层运行时与插件开发工具库。作为 [blbiLibrary](https://github.com/EggFine/blbiLibrary) 的全新重构与继任版本，NeoLibrary 统一封装了跨平台任务调度（兼容 Bukkit / Spigot、Paper / Purpur 与 Folia）、基于 HikariCP 的关系型数据库连接池、无损配置文件版本同步、多语言国际化（I18n）以及语义化版本更新检查能力。
+**NeoLibrary** 是专为 Minecraft `1.21+` 服务端设计的底层运行时与插件开发工具库。作为 [blbiLibrary](https://github.com/EggFine/blbiLibrary) 的全新重构与继任版本，NeoLibrary 统一封装了跨平台任务调度（兼容 Bukkit / Spigot、Paper / Purpur 与 Folia）、基于 HikariCP 的关系型数据库连接池、覆盖 12 种语言的全局集中化多语言系统、通用游戏内可视化 GUI 配置框架、无损配置文件版本同步以及语义化版本更新检查能力。
 
 通过将通用基础设施下沉至独立前置库，下游插件（如 [NeoLogin](https://github.com/EggFine/NeoLogin)）能够在保持代码精简的同时，无缝兼容传统单线程服务端与 Folia 区域化多线程架构。
 
@@ -31,13 +31,14 @@
 | :--- | :--- | :--- |
 | `FoliaUtil` | `com.blbilink.neoLibrary.utils` | 跨平台任务调度器与安全实体传送封装（自适应 Bukkit、Paper 与 Folia） |
 | `DatabaseUtil` | `com.blbilink.neoLibrary.utils` | HikariCP 6 连接池管理、多驱动 JDBC 构建、异步查询与 SQL 事务控制 |
-| `I18n` | `com.blbilink.neoLibrary.utils` | 多语言 YAML 资源管理、占位符安全格式化与默认回退解析 |
+| `I18n` | `com.blbilink.neoLibrary.utils` | Neo 套件全局语言统一继承、共享基础词条托管（内置 12 种语言）与占位符安全格式化 |
+| `ConfigGui` / `ConfigGuiManager` | `com.blbilink.neoLibrary.gui` | 通用游戏内可视化 GUI 配置框架（支持配置分类、上下翻页、关键字搜索、多级返回与套件切换） |
 | `ConfigUtil` | `com.blbilink.neoLibrary.utils` | 基于版本号感知的配置文件加载器与自动增量补全 |
 | `FileUtil` | `com.blbilink.neoLibrary.utils` | 配置文件与语言文件的非破坏性缺失键同步与安全读写 |
 | `UpdateUtil` | `com.blbilink.neoLibrary.utils` | 基于 Spiget API 的异步版本检查器，支持服务端版本兼容性识别 |
 | `VersionUtil` | `com.blbilink.neoLibrary.utils` | 多段语义化版本号（`SemVer`）解析与对比，支持预发布标识 |
 | `TextUtil` | `com.blbilink.neoLibrary.utils` | 控制台启动横幅构建、ASCII 矩阵字符渲染与颜色代码转换 |
-| `Metrics` | `com.blbilink.neoLibrary.metrics` | 内置 bStats 统计客户端，兼容 Folia 启动周期 |
+| `Metrics` | `com.blbilink.neoLibrary.utils` | 内置 bStats 统计客户端，兼容 Folia 启动周期 |
 
 ---
 
@@ -154,28 +155,54 @@ db.close();
 
 ---
 
-### 3. 多语言国际化 (`I18n`)
+### 3. 全局集中化多语言与共享词条 (`I18n`)
 
-`I18n` 从 `plugins/<插件名>/languages/<语言代码>.yml` 加载本地化配置，支持自动释放内置语言文件、升级时无损补全新增翻译键（保留服主已修改的自定义文案），并采用标准 `String.format`（`%s`、`%d`）占位符格式化消息。
+`NeoLibrary` 作为整个 Neo 插件套件的唯一全局语言控制中心（`plugins/NeoLibrary/config.yml -> language`），避免服主为每个子插件逐一修改语言配置：
+
+- **全局语言自动联动**：下游插件只需调用 `new I18n(plugin, prefix)` 并注册 `NeoLibrary.registerReloadHook(plugin, ...)`，即可自动跟随 `NeoLibrary` 全局语言并支持在线同步热切换。
+- **共享基础词条继承**：通用命令提示（`common.onlyPlayer`、`common.noPermission`、`common.reloaded`、`common.playerNotFound` 等）、GUI 界面控件（`gui.*`）及更新检查文案（`updateChecker.*`）均统一托管于 `NeoLibrary` 内置的 **12 套语言包**（`zh_CN`、`zh_TW`、`zh_HK`、`en_US`、`en_GB`、`ja_JP`、`ru_RU`、`de_DE`、`fr_FR`、`es_AR`、`pt_BR`、`ar_SA`），子插件通过分级回退链（`子插件语言包 -> NeoLibrary 全局语言包 -> 内置安全兜底`）自动继承，无需重复翻译。
 
 ```java
-I18n i18n = new I18n(plugin, "&8[&fMyPlugin&8] &f", "zh_CN");
+// 自动跟随 NeoLibrary 全局语言设置
+I18n i18n = new I18n(plugin, "&8[&fMyPlugin&8] &f");
 i18n.loadLanguage();
+NeoLibrary.registerReloadHook(plugin, i18n::loadLanguage);
 
-// 获取单行文本（true 表示自动附加插件前缀）
-String prefixed = i18n.as("command.reloaded", true);
-String plain = i18n.as("ui.title", false);
-
-// 带参数格式化输出
+// 直接读取通用基础词条或插件专有词条
+String noPerm = i18n.as("common.noPermission", true);
 String welcome = i18n.as("player.welcome", true, player.getName(), Bukkit.getOnlinePlayers().size());
-
-// 获取多行文本列表
 List<String> helpLines = i18n.asList("command.help", false);
 ```
 
 ---
 
-### 4. 配置文件同步与更新检查 (`ConfigUtil` & `UpdateUtil`)
+### 4. 通用可视化 GUI 配置框架 (`com.blbilink.neoLibrary.gui`)
+
+`NeoLibrary` 内置了完整适配 Folia 区域调度的箱子界面（Chest GUI）配置引擎，使所有 Neo 系列插件开箱支持游戏内可视化配置，原生具备 **配置分类（支持多级子分类）**、**上一页 / 下一页翻页**、**跨分类关键字搜索**、**多级历史返回（Back）**、字符串/列表聊天框编辑、敏感密码自动掩码以及 **Neo 套件跨插件切换中心**。
+
+```java
+ConfigGui configGui = ConfigGui.fromConfig(
+        plugin,
+        Material.TRIPWIRE_HOOK,
+        configUtil,
+        "config.yml",
+        this::getI18n
+)
+    .categoryIcon("database", Material.ENDER_CHEST)
+    .customizeEntry("database.type", e -> e.options("sqlite", "mysql", "mariadb", "postgresql"))
+    .customizeEntry("database.port", e -> e.range(1, 65535).step(1, 100))
+    .onReload(this::reloadPlugin);
+
+// 注册至 NeoLibrary 全局套件中心
+NeoLibrary.getInstance().getGuiManager().registerPluginGui(configGui);
+
+// 为管理员打开可视化配置界面
+configGui.open(player);
+```
+
+---
+
+### 5. 配置文件同步与更新检查 (`ConfigUtil` & `UpdateUtil`)
 
 ```java
 // 若配置文件不存在则自动导出；若存在则通过 VersionUtil 比对 version 字段，
@@ -201,6 +228,8 @@ new UpdateUtil(plugin, "125811", i18n, scheduler).checkUpdate();
 | **数据库连接池** | HikariCP 6.x | 无连接池 |
 | **异步数据库接口** | 独立工作线程池 + `CompletableFuture` | 基础回调 |
 | **SQL 事务封装** | 支持自动提交与异常回滚 | 不支持 |
+| **Neo 套件全局多语言** | 全局统一语言 + 共享基础词条（内置 12 种语言） | 各插件单独维护 |
+| **游戏内可视化 GUI 配置库** | 支持配置分类、上下翻页、搜索、返回与套件中心 | 不支持 |
 | **配置文件与语言包升级** | 非破坏性增量补全缺失键 | 覆盖或需手动合入 |
 
 ---
@@ -212,6 +241,21 @@ new UpdateUtil(plugin, "125811", i18n, scheduler).checkUpdate();
 | **Java 运行时** | Java 21 及以上 |
 | **Minecraft 版本** | `1.21` 及后续 `1.21.x` 全系列子版本 |
 | **服务端核心** | Spigot、Paper、Purpur、Folia 及其兼容分支 |
+
+---
+
+## 命令与权限说明
+
+所有管理功能均通过主命令 `/neolibrary`（别名 `/neolib`、`/nlib`）调用：
+
+| 命令用法 | 对应权限节点 | 默认归属 | 功能说明 |
+| :--- | :--- | :--- | :--- |
+| `/neolibrary gui` | `neolibrary.gui` | `OP` | 打开 NeoLibrary 可视化 GUI 配置菜单（可直接切换全局语言） |
+| `/neolibrary suite` | `neolibrary.gui` | `OP` | 打开 Neo 套件配置中心，一键切换管理已安装的各款 Neo 插件 |
+| `/neolibrary reload` | `neolibrary.reload` | `OP` | 重载 `NeoLibrary` 全局配置与语言包，并联动刷新所有已注册子插件 |
+
+> [!NOTE]
+> 授予主权限节点 `neolibrary.admin`（默认授予 `OP`）将自动继承 `neolibrary.gui` 与 `neolibrary.reload`。
 
 ---
 
@@ -290,8 +334,8 @@ version: "1.0.0"
 # 插件消息前缀
 prefix: "&8[&fNeo&bLibrary&8] &f"
 
-# 语言文件名（不含 .yml 后缀）
-# 可选值: zh_CN, en_US
+# Neo 系列插件全局统一语言（不含 .yml 后缀）
+# 内置可选: zh_CN, zh_TW, zh_HK, en_US, en_GB, ja_JP, ru_RU, de_DE, fr_FR, es_AR, pt_BR, ar_SA
 language: zh_CN
 
 # 启动时自动检查更新

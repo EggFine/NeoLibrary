@@ -19,7 +19,7 @@
 
 ## Overview
 
-**NeoLibrary** is a foundational runtime and utility framework for Minecraft `1.21+` plugin development. Engineered as the ground-up successor to [blbiLibrary](https://github.com/EggFine/blbiLibrary), it provides unified cross-platform task scheduling (Bukkit, Paper, and Folia), HikariCP-backed relational database pooling, non-destructive configuration synchronization, localization management, and semantic update checking.
+**NeoLibrary** is a foundational runtime and utility framework for Minecraft `1.21+` plugin development. Engineered as the ground-up successor to [blbiLibrary](https://github.com/EggFine/blbiLibrary), it provides unified cross-platform task scheduling (Bukkit, Paper, and Folia), HikariCP-backed relational database pooling, centralized suite-wide localization across 12 built-in languages, a universal in-game GUI configuration engine, non-destructive configuration synchronization, and semantic update checking.
 
 By centralizing infrastructure concerns into a single lightweight dependency, NeoLibrary allows downstream plugins—such as [NeoLogin](https://github.com/EggFine/NeoLogin)—to remain concise, thread-safe, and portable across traditional single-threaded servers and Folia's regionized multithreading model.
 
@@ -31,13 +31,14 @@ By centralizing infrastructure concerns into a single lightweight dependency, Ne
 | :--- | :--- | :--- |
 | `FoliaUtil` | `com.blbilink.neoLibrary.utils` | Unified task scheduler and cross-platform entity teleportation for Bukkit, Paper, and Folia |
 | `DatabaseUtil` | `com.blbilink.neoLibrary.utils` | HikariCP 6 connection pool, driver-specific JDBC builder, async queries, and SQL transactions |
-| `I18n` | `com.blbilink.neoLibrary.utils` | Multi-locale YAML message management, placeholder formatting, and fallback resolution |
+| `I18n` | `com.blbilink.neoLibrary.utils` | Centralized global locale inheritance, shared base translations (12 locales), and placeholder formatting |
+| `ConfigGui` / `ConfigGuiManager` | `com.blbilink.neoLibrary.gui` | Universal in-game GUI configuration framework supporting categories, pagination, search, back stack, and suite switching |
 | `ConfigUtil` | `com.blbilink.neoLibrary.utils` | Version-aware configuration loader with automatic schema synchronization |
 | `FileUtil` | `com.blbilink.neoLibrary.utils` | Non-destructive YAML key completion for configuration and localization files |
 | `UpdateUtil` | `com.blbilink.neoLibrary.utils` | Asynchronous Spiget API version checker with Minecraft version compatibility parsing |
 | `VersionUtil` | `com.blbilink.neoLibrary.utils` | Multi-segment Semantic Versioning (`SemVer`) comparator supporting pre-release qualifiers |
 | `TextUtil` | `com.blbilink.neoLibrary.utils` | Console startup banner generator, ASCII matrix renderer, and color formatting utilities |
-| `Metrics` | `com.blbilink.neoLibrary.metrics` | Embedded bStats telemetry client with Folia-safe initialization |
+| `Metrics` | `com.blbilink.neoLibrary.utils` | Embedded bStats telemetry client with Folia-safe initialization |
 
 ---
 
@@ -154,28 +155,54 @@ db.close();
 
 ---
 
-### 3. Internationalization (`I18n`)
+### 3. Centralized Global Localization & Shared Base Keys (`I18n`)
 
-`I18n` loads locale files from `plugins/<Plugin>/languages/<locale>.yml`, extracts bundled defaults automatically, completes missing translation keys across plugin updates without overwriting server customizations, and formats messages using standard `String.format` (`%s`, `%d`) placeholders.
+`NeoLibrary` acts as the single source of truth for localization across the entire Neo plugin suite (`plugins/NeoLibrary/config.yml -> language`), eliminating repetitive per-plugin language configuration:
+
+- **Automatic Global Inheritance**: Downstream plugins instantiate `new I18n(plugin, prefix)` (without a per-plugin locale parameter) and register `NeoLibrary.registerReloadHook(plugin, ...)` to follow global language changes live.
+- **Shared Base Translations**: Common messages (`common.onlyPlayer`, `common.noPermission`, `common.reloaded`, `common.playerNotFound`, etc.), GUI chrome (`gui.*`), and update notifications (`updateChecker.*`) are hosted centrally in `NeoLibrary`'s **12 built-in locales** (`zh_CN`, `zh_TW`, `zh_HK`, `en_US`, `en_GB`, `ja_JP`, `ru_RU`, `de_DE`, `fr_FR`, `es_AR`, `pt_BR`, `ar_SA`) and inherited automatically via hierarchical fallback (`Plugin Locale -> NeoLibrary Global Locale -> Default Fallback`).
 
 ```java
-I18n i18n = new I18n(plugin, "&8[&fMyPlugin&8] &f", "en_US");
+// Follows NeoLibrary's global language automatically
+I18n i18n = new I18n(plugin, "&8[&fMyPlugin&8] &f");
 i18n.loadLanguage();
+NeoLibrary.registerReloadHook(plugin, i18n::loadLanguage);
 
-// Retrieve single-line message (true = prepend plugin prefix)
-String prefixed = i18n.as("command.reloaded", true);
-String plain = i18n.as("ui.title", false);
-
-// Retrieve formatted message with arguments
+// Retrieve plugin-specific or inherited NeoLibrary shared base messages
+String noPerm = i18n.as("common.noPermission", true);
 String welcome = i18n.as("player.welcome", true, player.getName(), Bukkit.getOnlinePlayers().size());
-
-// Retrieve multi-line message list
 List<String> helpLines = i18n.asList("command.help", false);
 ```
 
 ---
 
-### 4. Configuration & Update Utilities (`ConfigUtil` & `UpdateUtil`)
+### 4. Universal In-Game GUI Configuration (`com.blbilink.neoLibrary.gui`)
+
+`NeoLibrary` encapsulates a Folia-safe chest GUI configuration framework so every Neo plugin supports interactive visual configuration out of the box—complete with **Categories**, **Previous / Next Page** pagination, cross-category keyword **Search**, stateful **Back** navigation, string/list chat editors, automatic password masking, and a cross-plugin **Neo Suite Switcher**.
+
+```java
+ConfigGui configGui = ConfigGui.fromConfig(
+        plugin,
+        Material.TRIPWIRE_HOOK,
+        configUtil,
+        "config.yml",
+        this::getI18n
+)
+    .categoryIcon("database", Material.ENDER_CHEST)
+    .customizeEntry("database.type", e -> e.options("sqlite", "mysql", "mariadb", "postgresql"))
+    .customizeEntry("database.port", e -> e.range(1, 65535).step(1, 100))
+    .onReload(this::reloadPlugin);
+
+// Register with NeoLibrary's global suite hub
+NeoLibrary.getInstance().getGuiManager().registerPluginGui(configGui);
+
+// Open directly for an authorized administrator
+configGui.open(player);
+```
+
+---
+
+### 5. Configuration & Update Utilities (`ConfigUtil` & `UpdateUtil`)
 
 ```java
 // Automatically creates config.yml if absent, compares the 'version' key against
@@ -201,6 +228,8 @@ new UpdateUtil(plugin, "125811", i18n, scheduler).checkUpdate();
 | **Connection Pooling** | HikariCP 6.x | Unpooled connections |
 | **Async Database Execution** | Dedicated Worker Pool + `CompletableFuture` | Basic callbacks |
 | **SQL Transactions** | Managed commit / auto-rollback | Not Supported |
+| **Centralized Suite Localization** | Global language + shared base keys (12 locales) | Per-plugin manual |
+| **In-Game GUI Configuration Engine** | Categories, Pagination, Search, Back & Suite Hub | Not Supported |
 | **Config & Locale Auto-Completion** | Non-destructive key synchronization | Overwrite or manual |
 
 ---
@@ -212,6 +241,21 @@ new UpdateUtil(plugin, "125811", i18n, scheduler).checkUpdate();
 | **Java Runtime** | Java 21 or newer |
 | **Minecraft Version** | `1.21` and all `1.21.x` minor releases |
 | **Supported Server Cores** | Spigot, Paper, Purpur, Folia, and compatible forks |
+
+---
+
+## Commands & Permissions
+
+All administrative subcommands are accessible under `/neolibrary` (aliases `/neolib`, `/nlib`).
+
+| Command | Permission Node | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `/neolibrary gui` | `neolibrary.gui` | `OP` | Open NeoLibrary's visual GUI configuration (including global language selector) |
+| `/neolibrary suite` | `neolibrary.gui` | `OP` | Open the Neo Suite Configuration Center to switch across registered Neo plugins |
+| `/neolibrary reload` | `neolibrary.reload` | `OP` | Reload `NeoLibrary` configuration/language and notify all registered Neo plugins |
+
+> [!NOTE]
+> Granting `neolibrary.admin` (default: `OP`) automatically grants both `neolibrary.gui` and `neolibrary.reload`.
 
 ---
 
@@ -290,8 +334,8 @@ version: "1.0.0"
 # Message prefix
 prefix: "&8[&fNeo&bLibrary&8] &f"
 
-# Language file name (without .yml)
-# Available: zh_CN, en_US
+# Global language for the entire Neo plugin suite (without .yml)
+# Built-in: zh_CN, zh_TW, zh_HK, en_US, en_GB, ja_JP, ru_RU, de_DE, fr_FR, es_AR, pt_BR, ar_SA
 language: zh_CN
 
 # Check for plugin updates on startup

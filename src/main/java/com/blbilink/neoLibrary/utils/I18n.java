@@ -1,5 +1,6 @@
 package com.blbilink.neoLibrary.utils;
 
+import com.blbilink.neoLibrary.NeoLibrary;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -17,24 +18,100 @@ import java.util.Objects;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+/**
+ * Neo 系列国际化管理器。
+ * 支持：
+ * 1. 全局语言自动跟随（下游插件使用 {@link #I18n(Plugin, String)} 即可自动读取 NeoLibrary 的全局语言配置）；
+ * 2. 公共基础语言词条继承（下游插件未定义的通用词条自动回退至 NeoLibrary 的共享语言库，免去重复翻译）；
+ * 3. 语言文件版本感知与非破坏性增量键同步。
+ */
 public class I18n {
 
     private FileConfiguration language;
     private final String prefix;
     private final Plugin plugin;
+    private final boolean followGlobalLanguage;
     private String languageName;
 
-    private static final String DEFAULT_LANGUAGE = "zh_CN";
+    private static final String DEFAULT_LANGUAGE = NeoLibrary.DEFAULT_LANGUAGE;
     private static final String LANGUAGE_FOLDER_PATH = "languages";
 
+    // 仅供离线单元测试注入模拟的全局共享 I18n 实例
+    private static volatile I18n testGlobalFallback;
+
     /**
-     * 统一的默认回退消息映射表（统一使用 camelCase 键名与 %s 占位符）。
-     * 当语言文件中缺少对应 key 或 I18n 实例为 null 时，使用这些默认英文消息。
+     * 统一的默认回退消息映射表（统一使用 camelCase 键名与 %s/%d 占位符）。
+     * 当语言文件中缺少对应 key 且全局 I18n 不可用时，使用这些默认消息兜底。
      */
     private static final Map<String, String> DEFAULT_MESSAGES = Map.ofEntries(
             // General
             Map.entry("languageName", "English (Fallback)"),
             Map.entry("loadedLanguage", "Loaded language file: %s"),
+            // Common shared keys across all Neo plugins
+            Map.entry("common.noPermission", "&cYou do not have permission to execute this command."),
+            Map.entry("common.onlyPlayer", "&cThis command can only be executed by a player."),
+            Map.entry("common.onlyConsole", "&cThis command can only be executed from the console."),
+            Map.entry("common.playerNotFound", "&cPlayer not found."),
+            Map.entry("common.playerNotOnline", "&cTarget player is not online."),
+            Map.entry("common.reloaded", "&aConfiguration and localization reloaded successfully."),
+            Map.entry("common.reloadFailed", "&cFailed to reload configuration."),
+            Map.entry("common.invalidArgs", "&cInvalid command arguments."),
+            Map.entry("common.yes", "&aYes"),
+            Map.entry("common.no", "&cNo"),
+            Map.entry("common.enabled", "&aEnabled"),
+            Map.entry("common.disabled", "&cDisabled"),
+            Map.entry("common.unknown", "N/A"),
+            Map.entry("common.online", "&aOnline"),
+            Map.entry("common.offline", "&7Offline"),
+            // Universal GUI Configuration keys
+            Map.entry("gui.titleSuite", "&8Neo Suite - Plugins"),
+            Map.entry("gui.titleHub", "&8%s - Configuration"),
+            Map.entry("gui.titleCategory", "&8%s > %s"),
+            Map.entry("gui.titleSearch", "&8%s - Search: %s"),
+            Map.entry("gui.titleList", "&8%s - List: %s"),
+            Map.entry("gui.suiteVersion", "&7Version: &f%s"),
+            Map.entry("gui.categoryItems", "&7Contains &f%d &7settings"),
+            Map.entry("gui.categoryEnter", "&eClick to open"),
+            Map.entry("gui.inCategory", "&8Category: %s"),
+            Map.entry("gui.previousPage", "&ePrevious Page"),
+            Map.entry("gui.nextPage", "&eNext Page"),
+            Map.entry("gui.pageInfo", "&7Page &f%d &7/ &f%d"),
+            Map.entry("gui.search", "&bSearch Settings"),
+            Map.entry("gui.searchCurrent", "&7Filter: &f%s"),
+            Map.entry("gui.searchNone", "&7No active filter"),
+            Map.entry("gui.searchClick", "&eLeft-click to search in chat"),
+            Map.entry("gui.searchClear", "&cRight-click to clear filter"),
+            Map.entry("gui.searchPrompt", "&eEnter search keyword in chat (type &ccancel &eto abort):"),
+            Map.entry("gui.searchEmpty", "&cNo matching settings found"),
+            Map.entry("gui.back", "&eBack"),
+            Map.entry("gui.backLore", "&7Return to previous menu"),
+            Map.entry("gui.close", "&cClose"),
+            Map.entry("gui.reload", "&aReload & Apply"),
+            Map.entry("gui.reloadLore", "&7Reload plugin configuration immediately"),
+            Map.entry("gui.pluginSuite", "&bNeo Suite Plugins"),
+            Map.entry("gui.pluginSuiteLore", "&7Switch between installed Neo plugins"),
+            Map.entry("gui.keyLabel", "&8Key: %s"),
+            Map.entry("gui.currentValue", "&7Current: &f%s"),
+            Map.entry("gui.maskedValue", "&8****** (Hidden)"),
+            Map.entry("gui.booleanTrue", "&aEnabled (true)"),
+            Map.entry("gui.booleanFalse", "&cDisabled (false)"),
+            Map.entry("gui.actionToggle", "&eClick to toggle"),
+            Map.entry("gui.actionCycle", "&eLeft-click next | Right-click previous"),
+            Map.entry("gui.actionNumber", "&eL-Click +%s | R-Click -%s | Shift ±%s | Drop to type"),
+            Map.entry("gui.actionText", "&eClick to enter new value in chat"),
+            Map.entry("gui.actionList", "&eClick to edit list (&f%d &eitems)"),
+            Map.entry("gui.actionRun", "&eClick to execute"),
+            Map.entry("gui.editPrompt", "&eEnter new value for &f%s &7(Current: %s, type &ccancel &7to abort):"),
+            Map.entry("gui.editPromptMasked", "&eEnter new value for &f%s &7(type &ccancel &7to abort):"),
+            Map.entry("gui.editCancelled", "&eEdit cancelled, returning to menu..."),
+            Map.entry("gui.editSaved", "&aUpdated &f%s &a-> &e%s"),
+            Map.entry("gui.invalidNumber", "&cInvalid number format: %s"),
+            Map.entry("gui.numberOutOfRange", "&cValue out of allowed range (%s ~ %s)."),
+            Map.entry("gui.listAdd", "&aAdd Entry"),
+            Map.entry("gui.listAddLore", "&eClick to append a new item via chat"),
+            Map.entry("gui.listAddPrompt", "&eEnter new item to append to &f%s &7(type &ccancel &7to abort):"),
+            Map.entry("gui.listItemRemove", "&cShift + Right-click to remove"),
+            Map.entry("gui.listIndex", "&8Index #%d"),
             // updateChecker
             Map.entry("updateChecker.error", "Failed to check for updates: %s"),
             Map.entry("updateChecker.failedConnection", "Could not connect to update server: %s"),
@@ -65,9 +142,10 @@ public class I18n {
 
     /**
      * 新旧键名双向兼容映射表（camelCase <-> 旧版 PascalCase），
-     * 确保升级过渡期间旧版语言文件或旧版调用方均不会出现 Missing key。
+     * 以及下游插件旧版命令键名到 NeoLibrary 全局公共键名 (common.*) 的映射。
      */
     private static final Map<String, String> KEY_ALIASES;
+    private static final Map<String, String> COMMON_FALLBACK_KEYS;
 
     static {
         Map<String, String> aliases = new HashMap<>();
@@ -95,6 +173,24 @@ public class I18n {
         registerAlias(aliases, "foliaUtil.bukkitDetected", "FoliaUtil.BukkitDetected");
         registerAlias(aliases, "foliaUtil.foliaInitError", "FoliaUtil.FoliaInitError");
         KEY_ALIASES = Collections.unmodifiableMap(aliases);
+
+        Map<String, String> commonMap = new HashMap<>();
+        commonMap.put("command.noPermission", "common.noPermission");
+        commonMap.put("noPermission", "common.noPermission");
+        commonMap.put("command.onlyPlayer", "common.onlyPlayer");
+        commonMap.put("login.onlyPlayer", "common.onlyPlayer");
+        commonMap.put("onlyPlayer", "common.onlyPlayer");
+        commonMap.put("command.onlyConsole", "common.onlyConsole");
+        commonMap.put("onlyConsole", "common.onlyConsole");
+        commonMap.put("command.reloaded", "common.reloaded");
+        commonMap.put("reloaded", "common.reloaded");
+        commonMap.put("command.reloadFailed", "common.reloadFailed");
+        commonMap.put("reloadFailed", "common.reloadFailed");
+        commonMap.put("resetPassword.playerNotFound", "common.playerNotFound");
+        commonMap.put("command.playerNotFound", "common.playerNotFound");
+        commonMap.put("resetPassword.playerNotOnline", "common.playerNotOnline");
+        commonMap.put("command.playerNotOnline", "common.playerNotOnline");
+        COMMON_FALLBACK_KEYS = Collections.unmodifiableMap(commonMap);
     }
 
     private static void registerAlias(Map<String, String> map, String canonicalKey, String legacyKey) {
@@ -102,19 +198,84 @@ public class I18n {
         map.put(legacyKey, canonicalKey);
     }
 
+    /**
+     * 供所有下游 Neo 插件使用的标准构造函数：自动跟随 NeoLibrary 中统一配置的全局语言。
+     *
+     * @param plugin 下游插件实例
+     * @param prefix 插件消息前缀
+     */
+    public I18n(Plugin plugin, String prefix) {
+        this.plugin = Objects.requireNonNull(plugin, "Plugin cannot be null");
+        this.prefix = Objects.requireNonNull(prefix, "Prefix cannot be null").replace('&', '§');
+        this.followGlobalLanguage = true;
+        this.languageName = NeoLibrary.getGlobalLanguage();
+    }
+
+    /**
+     * 显式指定语言名称的构造函数（供 NeoLibrary 自身或离线测试使用）。
+     */
     public I18n(Plugin plugin, String prefix, String languageName) {
         this.plugin = Objects.requireNonNull(plugin, "Plugin cannot be null");
         this.prefix = Objects.requireNonNull(prefix, "Prefix cannot be null").replace('&', '§');
+        this.followGlobalLanguage = false;
         this.languageName = Objects.requireNonNull(languageName, "LanguageName cannot be null");
     }
 
     /**
-     * 检查当前语言配置中是否包含指定键（含旧版别名兼容检查）。
-     *
-     * @param key 语言键名
-     * @return 如果存在返回 true
+     * 供独立单元测试直接从内存配置构造 I18n。
+     */
+    public I18n(String prefix, String languageName, FileConfiguration inMemoryLanguage) {
+        this.plugin = null;
+        this.prefix = Objects.requireNonNull(prefix, "Prefix cannot be null").replace('&', '§');
+        this.followGlobalLanguage = false;
+        this.languageName = Objects.requireNonNull(languageName, "LanguageName cannot be null");
+        this.language = Objects.requireNonNull(inMemoryLanguage, "inMemoryLanguage cannot be null");
+    }
+
+    public static void setGlobalFallbackForTesting(I18n fallback) {
+        testGlobalFallback = fallback;
+    }
+
+    private I18n resolveGlobalSharedI18n() {
+        I18n global = NeoLibrary.getGlobalI18n();
+        if (global == null) {
+            global = testGlobalFallback;
+        }
+        return (global != null && global != this) ? global : null;
+    }
+
+    public String getLanguageName() {
+        return languageName;
+    }
+
+    public String getPrefix() {
+        return prefix;
+    }
+
+    /**
+     * 检查当前插件语言文件或全局共享语言库中是否包含指定键。
      */
     public boolean hasKey(String key) {
+        if (key == null) {
+            return false;
+        }
+        if (hasLocalKey(key)) {
+            return true;
+        }
+        I18n shared = resolveGlobalSharedI18n();
+        if (shared != null) {
+            if (shared.hasLocalKey(key)) {
+                return true;
+            }
+            String commonKey = COMMON_FALLBACK_KEYS.get(key);
+            if (commonKey != null && shared.hasLocalKey(commonKey)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasLocalKey(String key) {
         if (language == null || key == null) {
             return false;
         }
@@ -125,7 +286,7 @@ public class I18n {
         return alias != null && (language.isString(alias) || language.isList(alias));
     }
 
-    private String resolveRawString(String key) {
+    private String resolveLocalRawString(String key) {
         if (language == null || key == null) {
             return null;
         }
@@ -134,6 +295,49 @@ public class I18n {
             String alias = KEY_ALIASES.get(key);
             if (alias != null) {
                 raw = language.getString(alias);
+            }
+        }
+        return raw;
+    }
+
+    private String resolveRawString(String key) {
+        if (key == null) {
+            return null;
+        }
+        // 1. 优先读取当前插件自身的语言文件（允许特定插件覆盖词条）
+        String raw = resolveLocalRawString(key);
+        if (raw != null) {
+            return raw;
+        }
+
+        // 2. 自动委托给 NeoLibrary 全局共享基础词条库（含 common.*、gui.*、updateChecker.* 等）
+        I18n shared = resolveGlobalSharedI18n();
+        if (shared != null) {
+            raw = shared.resolveLocalRawString(key);
+            if (raw != null) {
+                return raw;
+            }
+            String commonKey = COMMON_FALLBACK_KEYS.get(key);
+            if (commonKey != null) {
+                raw = shared.resolveLocalRawString(commonKey);
+                if (raw != null) {
+                    return raw;
+                }
+            }
+        }
+
+        // 3. 兜底回退至内置 DEFAULT_MESSAGES（确保无服务器环境的单元测试或精简包永不崩溃）
+        raw = DEFAULT_MESSAGES.get(key);
+        if (raw == null) {
+            String alias = KEY_ALIASES.get(key);
+            if (alias != null) {
+                raw = DEFAULT_MESSAGES.get(alias);
+            }
+        }
+        if (raw == null) {
+            String commonKey = COMMON_FALLBACK_KEYS.get(key);
+            if (commonKey != null) {
+                raw = DEFAULT_MESSAGES.get(commonKey);
             }
         }
         return raw;
@@ -187,16 +391,18 @@ public class I18n {
 
     /**
      * 静态方法：获取消息，支持 I18n 实例为 null 或下游插件语言文件未包含公共库键名的情况。
-     * 当 i18n 为 null 或不包含对应键时，自动回退至 DEFAULT_MESSAGES。
-     *
-     * @param i18n I18n 实例（可以为 null）
-     * @param key  消息键
-     * @param args 格式化参数
-     * @return 格式化后的消息字符串
+     * 依次检查传入的 i18n、NeoLibrary 全局共享 I18n、以及内置 DEFAULT_MESSAGES。
      */
     public static String getMessageOrDefault(I18n i18n, String key, Object... args) {
         if (i18n != null && i18n.hasKey(key)) {
             return i18n.as(key, false, args);
+        }
+        I18n global = NeoLibrary.getGlobalI18n();
+        if (global == null) {
+            global = testGlobalFallback;
+        }
+        if (global != null && global != i18n && global.hasKey(key)) {
+            return global.as(key, false, args);
         }
         String template = DEFAULT_MESSAGES.get(key);
         if (template == null) {
@@ -206,28 +412,29 @@ public class I18n {
             }
         }
         if (template == null) {
+            String commonKey = COMMON_FALLBACK_KEYS.get(key);
+            if (commonKey != null) {
+                template = DEFAULT_MESSAGES.get(commonKey);
+            }
+        }
+        if (template == null) {
             template = key;
         }
         return formatMessage(template.replace('&', '§'), args);
     }
 
     /**
-     * 获取翻译字符串列表。
-     *
-     * @param key       语言文件中的键
-     * @param addPrefix 是否添加前缀
-     * @param args      格式化参数
-     * @return 格式化后的字符串列表
+     * 获取翻译字符串列表（支持向全局共享语言库委托）。
      */
     public List<String> asList(String key, boolean addPrefix, Object... args) {
-        if (language == null || key == null) {
+        if (key == null) {
             return Collections.emptyList();
         }
-        List<String> list = language.getStringList(key);
+        List<String> list = resolveLocalList(key);
         if (list.isEmpty()) {
-            String alias = KEY_ALIASES.get(key);
-            if (alias != null) {
-                list = language.getStringList(alias);
+            I18n shared = resolveGlobalSharedI18n();
+            if (shared != null) {
+                list = shared.resolveLocalList(key);
             }
         }
         if (list.isEmpty()) {
@@ -245,14 +452,39 @@ public class I18n {
                 .collect(Collectors.toList());
     }
 
+    private List<String> resolveLocalList(String key) {
+        if (language == null || key == null) {
+            return Collections.emptyList();
+        }
+        List<String> list = language.getStringList(key);
+        if (list.isEmpty()) {
+            String alias = KEY_ALIASES.get(key);
+            if (alias != null) {
+                list = language.getStringList(alias);
+            }
+        }
+        return list;
+    }
+
     /**
      * 加载语言文件，并处理版本更新和补全。
+     * 若开启了全局语言跟随，每次加载/重载都会自动同步 NeoLibrary 当前激活的全局语言。
      */
     public void loadLanguage() {
+        if (plugin == null) {
+            return;
+        }
+        if (followGlobalLanguage) {
+            this.languageName = NeoLibrary.getGlobalLanguage();
+        }
+
         File languageFile = setupLanguageFile();
         if (languageFile == null) {
-            plugin.getLogger().severe("Could not load any language file. I18n will not function correctly.");
             this.language = new YamlConfiguration();
+            // 若下游插件未打包独立语言文件而完全依赖 NeoLibrary 共享基础词条，属于合法用法
+            if (resolveGlobalSharedI18n() == null) {
+                plugin.getLogger().severe("Could not load any language file. I18n will not function correctly.");
+            }
             return;
         }
 
@@ -261,13 +493,11 @@ public class I18n {
         // 检查并更新语言文件
         checkVersionAndUpdate(languageFile);
 
-        plugin.getLogger().info(ChatColor.AQUA + "[√] " + as("loadedLanguage", false, languageName) + " | " + as("languageName", false) + ChatColor.RESET);
+        plugin.getLogger().info(ChatColor.AQUA + "[OK] " + as("loadedLanguage", false, languageName) + " | " + as("languageName", false) + ChatColor.RESET);
     }
 
     /**
      * 准备语言文件，如果不存在则从资源中创建，并处理回退逻辑。
-     *
-     * @return 可用的语言文件，如果失败则返回 null
      */
     private File setupLanguageFile() {
         File languageFolder = new File(plugin.getDataFolder(), LANGUAGE_FOLDER_PATH);
@@ -278,23 +508,20 @@ public class I18n {
         File languageFile = new File(languageFolder, languageName + ".yml");
         String resourcePath = LANGUAGE_FOLDER_PATH + "/" + languageName + ".yml";
 
-        // 如果文件不存在，尝试从 jar 中保存
         if (!languageFile.exists()) {
             if (hasResource(resourcePath)) {
                 plugin.saveResource(resourcePath, false);
             } else {
-                // 如果指定的语言在 jar 中不存在，回退到默认语言
+                String defaultResource = LANGUAGE_FOLDER_PATH + "/" + DEFAULT_LANGUAGE + ".yml";
+                if (!hasResource(defaultResource)) {
+                    // 下游插件没有打包自带语言目录（完全使用 NeoLibrary 公共语言）
+                    return null;
+                }
                 plugin.getLogger().warning("Specified language file '" + languageName + ".yml' not found in plugin resources. Falling back to default language '" + DEFAULT_LANGUAGE + ".yml'.");
                 this.languageName = DEFAULT_LANGUAGE;
-                resourcePath = LANGUAGE_FOLDER_PATH + "/" + DEFAULT_LANGUAGE + ".yml";
                 languageFile = new File(languageFolder, this.languageName + ".yml");
-
-                // 如果默认语言文件也不在磁盘上，且在 jar 中存在，则保存它
-                if (!languageFile.exists() && hasResource(resourcePath)) {
-                    plugin.saveResource(resourcePath, false);
-                } else if (!languageFile.exists()) {
-                    // 如果连默认语言文件都无法创建，这是个严重问题
-                    return null;
+                if (!languageFile.exists()) {
+                    plugin.saveResource(defaultResource, false);
                 }
             }
         }
@@ -311,19 +538,15 @@ public class I18n {
 
     /**
      * 检查语言文件版本并与插件内的版本进行同步。
-     *
-     * @param languageFile 当前使用的语言文件
      */
     private void checkVersionAndUpdate(File languageFile) {
         String currentLangResourcePath = LANGUAGE_FOLDER_PATH + "/" + languageName + ".yml";
         String defaultLangResourcePath = LANGUAGE_FOLDER_PATH + "/" + DEFAULT_LANGUAGE + ".yml";
 
-        // 从 Jar 中加载当前语言和默认中文语言的配置以进行比较（使用公共方法）
         FileConfiguration newLangConfig = FileUtil.loadConfigFromResource(plugin, currentLangResourcePath);
         FileConfiguration cnLangConfig = FileUtil.loadConfigFromResource(plugin, defaultLangResourcePath);
 
         if (newLangConfig == null || cnLangConfig == null) {
-            plugin.getLogger().warning("Could not load language config files, skipping language version check.");
             return;
         }
 
@@ -331,15 +554,9 @@ public class I18n {
         String newVersion = newLangConfig.getString("version", "0.0");
         String cnVersion = cnLangConfig.getString("version", "0.0");
 
-        plugin.getLogger().info("[#] Current language " + languageName + " version: " + localVersion + ChatColor.RESET);
-        plugin.getLogger().info("[#] Latest language " + languageName + " version: " + newVersion + ChatColor.RESET);
-        plugin.getLogger().info("[#] Latest default language " + DEFAULT_LANGUAGE + " version: " + cnVersion + ChatColor.RESET);
-
-        // 检查当前语言文件是否有新版本
         if (VersionUtil.isVersionNewer(newVersion, localVersion)) {
             plugin.getLogger().info(ChatColor.AQUA + "New language file version detected. Updating..." + ChatColor.RESET);
             FileUtil.completeLanguageFile(plugin, false, currentLangResourcePath);
-            // 更新后重新加载文件内容
             this.language = YamlConfiguration.loadConfiguration(languageFile);
             language.set("version", newVersion);
             try {
@@ -347,17 +564,12 @@ public class I18n {
             } catch (IOException e) {
                 plugin.getLogger().log(Level.SEVERE, "Could not save updated version to language file: " + languageFile.getName(), e);
             }
-        } else {
-            plugin.getLogger().info(ChatColor.AQUA + "[OK] You are using the latest language file version." + ChatColor.RESET);
         }
 
-        // 检查默认语言文件是否比当前文件新，如果是，则同步缺失的键
         if (!languageName.equals(DEFAULT_LANGUAGE) && VersionUtil.isVersionNewer(cnVersion, localVersion)) {
             plugin.getLogger().warning("The default (" + DEFAULT_LANGUAGE + ".yml) language file is newer than yours. Synchronizing new keys...");
             FileUtil.completeLanguageFile(plugin, true, currentLangResourcePath);
-            // 再次重新加载以确保所有更改都生效
             this.language = YamlConfiguration.loadConfiguration(languageFile);
         }
     }
-
 }

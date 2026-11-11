@@ -1,0 +1,131 @@
+version: "1.0.0"
+
+# General
+languageName: "日本語 (Japanese)"
+loadedLanguage: "グローバル言語ファイルを読み込みました: %s"
+
+# Startup Banner
+logo:
+  status: "読み込み中..."
+  subTitle: "次世代 blbiLibrary\nSpigotMC: https://www.spigotmc.org/resources/125811/"
+
+# Shared Base Messages (Inherited automatically by all Neo series plugins)
+common:
+  noPermission: "&cこのコマンドを実行する権限がありません！"
+  onlyPlayer: "&cこのコマンドはゲーム内のプレイヤーのみ実行できます！"
+  onlyConsole: "&cこのコマンドはコンソールからのみ実行できます！"
+  playerNotFound: "&c指定されたプレイヤーが見つかりません！"
+  playerNotOnline: "&c対象のプレイヤーは現在オフラインです！"
+  reloaded: "&a設定ファイルとグローバル言語を再読み込みしました！"
+  reloadFailed: "&c設定の再読み込みに失敗しました。コンソールを確認してください。"
+  invalidArgs: "&cコマンド引数が正しくありません。"
+  "yes": "&aはい"
+  "no": "&cいいえ"
+  enabled: "&a有効"
+  disabled: "&c無効"
+  unknown: "不明"
+  online: "&aオンライン"
+  offline: "&7オフライン"
+
+# Universal GUI Configuration Framework (Shared across all Neo plugins)
+gui:
+  titleSuite: "&8Neo スイート - プラグイン管理"
+  titleHub: "&8%s - 設定メニュー"
+  titleCategory: "&8%s > %s"
+  titleSearch: "&8%s - 検索: %s"
+  titleList: "&8%s - リスト: %s"
+  suiteVersion: "&7バージョン: &f%s"
+  categoryItems: "&7設定項目数: &f%d"
+  categoryEnter: "&eクリックしてカテゴリを開く"
+  inCategory: "&8カテゴリ: %s"
+  previousPage: "&e前のページ"
+  nextPage: "&e次のページ"
+  pageInfo: "&7ページ &f%d &7/ &f%d"
+  search: "&b設定を検索"
+  searchCurrent: "&7検索ワード: &f%s"
+  searchNone: "&7フィルターなし"
+  searchClick: "&e左クリックでチャットからキーワード検索"
+  searchClear: "&c右クリックで検索をクリアして戻る"
+  searchPrompt: "&eチャットに検索キーワードを入力してください（&ccancel &eでキャンセル）："
+  searchEmpty: "&c一致する設定項目が見つかりませんでした"
+  back: "&e戻る"
+  backLore: "&7前のメニューに戻ります"
+  close: "&c閉じる"
+  reload: "&a再読み込みして適用"
+  reloadLore: "&7クリックして設定を即座に反映します"
+  pluginSuite: "&bNeo プラグイン切替"
+  pluginSuiteLore: "&7導入済みの Neo シリーズプラグインを切り替えます"
+  keyLabel: "&8キー: %s"
+  currentValue: "&7現在値: &f%s"
+  maskedValue: "&8****** (非表示)"
+  booleanTrue: "&a有効 (true)"
+  booleanFalse: "&c無効 (false)"
+  actionToggle: "&eクリックで切り替え"
+  actionCycle: "&e左クリックで次へ | 右クリックで前へ"
+  actionNumber: "&e左 +%s | 右 -%s | Shift ±%s | ドロップキーで直接入力"
+  actionText: "&eクリックしてチャットで新しい値を入力"
+  actionList: "&eクリックしてリストを編集 (&f%d &e件)"
+  actionRun: "&eクリックして実行"
+  editPrompt: "&f%s &eの新しい値をチャットに入力してください &7(現在: %s、&ccancel &7で中止)："
+  editPromptMasked: "&f%s &eの新しい値をチャットに入力してください &7(&ccancel &7で中止)："
+  editCancelled: "&e変更をキャンセルしました。メニューに戻ります..."
+  editSaved: "&a設定を更新しました: &f%s &a-> &e%s"
+  invalidNumber: "&c数値の形式が無効です: %s"
+  numberOutOfRange: "&c値が許容範囲外です (%s ~ %s)。"
+  listAdd: "&a項目を追加"
+  listAddLore: "&eクリックしてチャットから新しい項目を追加"
+  listAddPrompt: "&f%s &eに追加する項目をチャットに入力してください &7(&ccancel &7で中止)："
+  listItemRemove: "&cShift + 右クリックで削除"
+  listIndex: "&8番号 #%d"
+
+# Update Checker
+updateChecker:
+  found: "&a新しいバージョンが利用可能です: &e%s &7(現在: %s)"
+  download: "&aダウンロード先: &e%s"
+  error: "&cアップデートの確認に失敗しました: %s"
+  upToDate: "&a最新バージョンを使用しています。"
+  failedConnection: "&cアップデートサーバーに接続できませんでした: %s"
+  parseError: "&cサーバー文字列から Minecraft バージョンを取得できなかったためスキップしました。"
+  parseMcError: "&cMinecraft バージョンを解析できませんでした: %s"
+  invalidVersion: "&cプラグインのバージョン形式が無効です。"
+  noVersions: "&eAPI レスポンスからバージョン情報を取得できませんでした。"
+
+# ConfigUtil
+configUtil:
+  notInJar: "&e設定ファイル '%s' が jar 内に見つからないため確認をスキップしました。"
+  localVersion: "&7現在の設定バージョン: %s, 最新の設定バージョン: %s"
+  newVersionDetected: "&a新しい設定バージョンを検出しました。自動同期しています..."
+  updateComplete: "&a設定ファイルの更新が完了しました（バージョン %s）。"
+  upToDate: "&a最新の設定ファイルを使用しています。"
+  notExist: "&7設定ファイルが存在しないため、デフォルト設定を出力します。"
+  notInResource: "&eリソース '%s' が見つからないため空ファイルを作成します。"
+  reloading: "&7設定ファイルを再読み込みしています..."
+
+# FoliaUtil
+foliaUtil:
+  foliaDetected: "&aFolia 互換コアを検出しました。Folia スケジューラを使用します"
+  bukkitDetected: "&a標準 Bukkit コアを検出しました。標準スケジューラを使用します"
+  foliaInitError: "&cFolia スケジューラの初期化に失敗しました。標準スケジューラにフォールバックします。"
+
+# NeoLibrary Commands
+command:
+  help:
+    header: "&6===== NeoLibrary グローバルヘルプ ====="
+    gui: "&e/neolibrary gui &7- NeoLibrary GUI 設定画面を開く"
+    suite: "&e/neolibrary suite &7- Neo シリーズ統合設定ハブを開く"
+    reload: "&e/neolibrary reload &7- グローバル設定と全 Neo プラグインの言語を再読み込み"
+
+# NeoLibrary Own GUI Config Labels
+guiConfig:
+  category:
+    general: "&e&lグローバル・一般設定"
+  categoryDesc:
+    general: "&7Neo シリーズ全体の言語、プレフィックス、更新確認を管理します"
+  item:
+    prefix: "&bメッセージプレフィックス"
+    language: "&bNeo グローバル言語"
+    checkUpdate: "&b起動時のアップデート確認"
+  desc:
+    prefix: "&7NeoLibrary のメッセージ先頭に表示されるプレフィックス"
+    language: "&7変更すると導入済みの全 Neo プラグインの言語が自動同期されます"
+    checkUpdate: "&7サーバー起動時に Spiget API で最新バージョンを確認します"

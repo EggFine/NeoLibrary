@@ -6,3 +6,25 @@ author: EggFine[blbilink]
 description: The Next Generation Utility Library for Minecraft Plugins
 folia-supported: true
 load: STARTUP
+
+commands:
+  neolibrary:
+    description: "NeoLibrary global configuration & GUI management command"
+    usage: "/neolibrary [gui|reload]"
+    aliases:
+      - "neolib"
+      - "nlib"
+
+permissions:
+  neolibrary.admin:
+    description: "Allows access to all NeoLibrary admin commands and GUI configuration"
+    default: op
+    children:
+      neolibrary.gui: true
+      neolibrary.reload: true
+  neolibrary.gui:
+    description: "Allows opening the NeoLibrary & Neo Suite GUI configuration"
+    default: op
+  neolibrary.reload:
+    description: "Allows reloading NeoLibrary global configuration and language"
+    default: op

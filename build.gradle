@@ -6,8 +6,9 @@ plugins {
 
 group = 'com.blbilink'
 
+def isReleaseBuild = project.hasProperty("release") || System.getenv("GITHUB_REF_TYPE") == "tag"
 def buildNumber = System.getenv("GITHUB_RUN_NUMBER")
-version = buildNumber ? "${pluginVersion}.${buildNumber}" : "${pluginVersion}-SNAPSHOT"
+version = isReleaseBuild ? pluginVersion : (buildNumber ? "${pluginVersion}.${buildNumber}" : "${pluginVersion}-SNAPSHOT")
 
 repositories {
     mavenCentral()
