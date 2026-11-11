@@ -1,8 +1,11 @@
 package com.blbilink.neoLibrary;
 
 import com.blbilink.neoLibrary.commands.NeoLibraryCommand;
+import com.blbilink.neoLibrary.gui.ChatPromptService;
 import com.blbilink.neoLibrary.gui.ConfigGui;
 import com.blbilink.neoLibrary.gui.ConfigGuiManager;
+import com.blbilink.neoLibrary.gui.InteractiveMenuListener;
+import com.blbilink.neoLibrary.spi.NeoSuiteRegistry;
 import com.blbilink.neoLibrary.utils.ConfigUtil;
 import com.blbilink.neoLibrary.utils.FoliaUtil;
 import com.blbilink.neoLibrary.utils.I18n;
@@ -42,6 +45,7 @@ public final class NeoLibrary extends JavaPlugin {
     private volatile String activeLanguage = DEFAULT_LANGUAGE;
     private Metrics metrics;
     private FoliaUtil foliaUtil;
+    private ChatPromptService chatPromptService;
     private ConfigGuiManager guiManager;
     private ConfigGui configGui;
 
@@ -65,7 +69,11 @@ public final class NeoLibrary extends JavaPlugin {
         // 3. 初始化 FoliaUtil（使用 I18n 输出核心检测消息）
         foliaUtil = new FoliaUtil(this, i18n);
 
-        // 4. 初始化通用 GUI 配置中心并注册监听器
+        // 4. 初始化共享聊天栏输入服务、箱子菜单监听器与通用 GUI 配置中心
+        chatPromptService = new ChatPromptService(this);
+        getServer().getPluginManager().registerEvents(chatPromptService, this);
+        getServer().getPluginManager().registerEvents(new InteractiveMenuListener(), this);
+
         guiManager = new ConfigGuiManager(this);
         getServer().getPluginManager().registerEvents(guiManager, this);
 
@@ -125,6 +133,10 @@ public final class NeoLibrary extends JavaPlugin {
     @Override
     public void onDisable() {
         RELOAD_HOOKS.clear();
+        NeoSuiteRegistry.resetAll();
+        if (chatPromptService != null) {
+            chatPromptService.cleanup();
+        }
         if (guiManager != null) {
             guiManager.cleanup();
         }
@@ -167,11 +179,12 @@ public final class NeoLibrary extends JavaPlugin {
     }
 
     /**
-     * 注销下游插件的重载监听钩子（建议在下游插件 onDisable 中调用）。
+     * 注销下游插件的重载监听钩子与套件协同 SPI（建议在下游插件 onDisable 中调用）。
      */
     public static void unregisterReloadHook(Plugin plugin) {
         if (plugin != null) {
             RELOAD_HOOKS.remove(plugin.getName());
+            NeoSuiteRegistry.unregisterAll(plugin);
             NeoLibrary lib = instance;
             if (lib != null && lib.guiManager != null) {
                 lib.guiManager.unregisterPluginGui(plugin);
@@ -193,6 +206,10 @@ public final class NeoLibrary extends JavaPlugin {
 
     public FoliaUtil getFoliaUtil() {
         return foliaUtil;
+    }
+
+    public ChatPromptService getChatPromptService() {
+        return chatPromptService;
     }
 
     public ConfigGuiManager getGuiManager() {

@@ -1,16 +1,37 @@
 package com.blbilink.neoLibrary;
 
+import com.blbilink.neoLibrary.bridge.EconomyBridge;
+import com.blbilink.neoLibrary.bridge.UserGroupBridge;
+import com.blbilink.neoLibrary.command.DynamicCommandEngine;
 import com.blbilink.neoLibrary.gui.ConfigCategory;
 import com.blbilink.neoLibrary.gui.ConfigEntry;
 import com.blbilink.neoLibrary.gui.ConfigGui;
 import com.blbilink.neoLibrary.gui.ConfigGuiManager;
+import com.blbilink.neoLibrary.kernel.ModuleCategory;
+import com.blbilink.neoLibrary.kernel.ModuleManager;
+import com.blbilink.neoLibrary.kernel.NeoKernelPlugin;
+import com.blbilink.neoLibrary.kernel.NeoModule;
+import com.blbilink.neoLibrary.spi.AuthSpi;
+import com.blbilink.neoLibrary.spi.EconomySpi;
+import com.blbilink.neoLibrary.spi.NeoSuiteRegistry;
+import com.blbilink.neoLibrary.spi.VisibilitySpi;
 import com.blbilink.neoLibrary.utils.DatabaseUtil;
+import com.blbilink.neoLibrary.utils.DurationUtil;
 import com.blbilink.neoLibrary.utils.FileUtil;
+import com.blbilink.neoLibrary.utils.FoliaUtil;
 import com.blbilink.neoLibrary.utils.I18n;
+import com.blbilink.neoLibrary.utils.ItemStateCodec;
+import com.blbilink.neoLibrary.utils.NetUtil;
+import com.blbilink.neoLibrary.utils.RichTextUtil;
+import com.blbilink.neoLibrary.utils.TabCompleteUtil;
 import com.blbilink.neoLibrary.utils.UpdateUtil;
 import com.blbilink.neoLibrary.utils.VersionUtil;
 import com.blbilink.neoLibrary.utils.YmlUtil;
+import com.blbilink.neoLibrary.world.SafeLocationEngine;
+import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -23,8 +44,11 @@ import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
@@ -35,6 +59,7 @@ class NeoLibraryCoreTest {
     @AfterEach
     void tearDown() {
         I18n.setGlobalFallbackForTesting(null);
+        NeoSuiteRegistry.resetAll();
     }
 
     private Plugin createStubPlugin(File dataFolder) {
@@ -274,5 +299,169 @@ class NeoLibraryCoreTest {
         } finally {
             dbUtil.close();
         }
+    }
+
+    @Test
+    void testSharedRichTextDurationNetAndTabUtilities() {
+        assertEquals("§x§0§0§b§f§f§f§lNeo", RichTextUtil.colorize("&#00BFFf&lNeo"));
+        assertEquals("Neo Suite", RichTextUtil.stripColors("&#00BFFF&lNeo &7Suite"));
+        assertEquals("§a■■§8■■", RichTextUtil.buildProgressBar(5, 10, 4, "&a", "&8"));
+
+        // Verify I18n hex colorize integration
+        YamlConfiguration mem = new YamlConfiguration();
+        mem.set("title", "&#FF5500Welcome %s");
+        I18n hexI18n = new I18n("&#00AAFF[Neo] ", "en_US", mem);
+        assertEquals("§x§0§0§a§a§f§f[Neo] §x§f§f§5§5§0§0Welcome Alex", hexI18n.as("title", true, "Alex"));
+
+        assertEquals(90_061L, DurationUtil.parseSeconds("1d 1h 1m 1s").orElse(-1L));
+        assertEquals(604_800L, DurationUtil.parseSeconds("1w").orElse(-1L));
+        assertTrue(DurationUtil.parseSeconds("12x").isEmpty());
+        assertEquals("1d 1h 1m", DurationUtil.formatCompact(90_061L));
+        assertEquals("0s", DurationUtil.formatCompact(0L));
+
+        assertEquals("192.168.1.25", NetUtil.normalizeIp("/192.168.1.25"));
+        assertEquals("fe80::1", NetUtil.normalizeIp("FE80::1%eth0"));
+        assertEquals("192.168.1.***", NetUtil.maskIp("192.168.1.25"));
+
+        assertEquals(List.of("spawn", "setspawn"), TabCompleteUtil.matchPrefix("s", "home", "spawn", "setspawn", "warp"));
+    }
+
+    @Test
+    void testSafeLocationEngineAndUserGroupBridge() {
+        assertTrue(SafeLocationEngine.isSafeStandMaterials(Material.GRASS_BLOCK, Material.AIR, Material.AIR, false));
+        assertTrue(SafeLocationEngine.isSafeStandMaterials(Material.STONE, Material.SHORT_GRASS, Material.TORCH, false));
+        assertFalse(SafeLocationEngine.isSafeStandMaterials(Material.LAVA, Material.AIR, Material.AIR, false));
+        assertFalse(SafeLocationEngine.isSafeStandMaterials(Material.MAGMA_BLOCK, Material.AIR, Material.AIR, false));
+        assertFalse(SafeLocationEngine.isSafeStandMaterials(Material.STONE, Material.NETHER_PORTAL, Material.AIR, false));
+        assertFalse(SafeLocationEngine.isSafeStandMaterials(Material.WATER, Material.AIR, Material.AIR, false));
+        assertTrue(SafeLocationEngine.isSafeStandMaterials(Material.WATER, Material.WATER, Material.AIR, true));
+
+        List<String> tiers = List.of("svip", "vip", "member");
+        // OP has all effective permissions, but explicit permission for 'vip' must win over OP inheritance of 'svip'
+        String resolved = UserGroupBridge.resolveTierFromPermissions(
+                "neocore.group.vip"::equals,
+                node -> true,
+                tiers,
+                "neocore.group."
+        );
+        assertEquals("vip", resolved);
+        assertEquals("default", UserGroupBridge.sanitizeGroupToken("   "));
+        assertEquals("vip_plus", UserGroupBridge.sanitizeGroupToken("VIP_Plus!"));
+    }
+
+    @Test
+    void testNeoSuiteRegistryEconomyBridgeAndMicrokernelLifecycle(@TempDir Path tempDir) {
+        UUID vanishedStaff = UUID.randomUUID();
+        UUID normalPlayer = UUID.randomUUID();
+        Plugin owner = createStubPlugin(tempDir.toFile());
+
+        NeoSuiteRegistry.registerAuth(owner, new AuthSpi() {
+            @Override
+            public boolean isAvailable() {
+                return true;
+            }
+
+            @Override
+            public boolean isAuthenticated(UUID playerUuid) {
+                return normalPlayer.equals(playerUuid);
+            }
+        });
+        assertTrue(NeoSuiteRegistry.auth().isAvailable());
+        assertTrue(NeoSuiteRegistry.auth().isAuthenticated(normalPlayer));
+        assertFalse(NeoSuiteRegistry.auth().isAuthenticated(vanishedStaff));
+
+        NeoSuiteRegistry.registerVisibility(owner, new VisibilitySpi() {
+            @Override
+            public boolean isVanished(UUID playerUuid) {
+                return vanishedStaff.equals(playerUuid);
+            }
+        });
+        assertFalse(NeoSuiteRegistry.visibility().canSee(normalPlayer, vanishedStaff));
+        assertTrue(NeoSuiteRegistry.visibility().canSee(vanishedStaff, vanishedStaff));
+
+        Map<UUID, Double> ledger = new HashMap<>();
+        ledger.put(normalPlayer, 250.0d);
+        NeoSuiteRegistry.registerEconomy(owner, new EconomySpi() {
+            @Override
+            public boolean isAvailable() {
+                return true;
+            }
+
+            @Override
+            public boolean hasBalance(OfflinePlayer player, double amount) {
+                return ledger.getOrDefault(player.getUniqueId(), 0.0d) >= amount;
+            }
+
+            @Override
+            public boolean withdraw(OfflinePlayer player, double amount) {
+                double cur = ledger.getOrDefault(player.getUniqueId(), 0.0d);
+                if (cur < amount) return false;
+                ledger.put(player.getUniqueId(), cur - amount);
+                return true;
+            }
+
+            @Override
+            public boolean deposit(OfflinePlayer player, double amount) {
+                ledger.put(player.getUniqueId(), ledger.getOrDefault(player.getUniqueId(), 0.0d) + amount);
+                return true;
+            }
+
+            @Override
+            public String format(double amount) {
+                return "$" + String.format(java.util.Locale.ROOT, "%.2f", amount);
+            }
+        });
+
+        OfflinePlayer stubOffline = (OfflinePlayer) Proxy.newProxyInstance(
+                OfflinePlayer.class.getClassLoader(),
+                new Class<?>[]{OfflinePlayer.class},
+                (p, m, a) -> "getUniqueId".equals(m.getName()) ? normalPlayer : null
+        );
+        EconomyBridge ecoBridge = new EconomyBridge();
+        assertTrue(ecoBridge.isAvailable());
+        assertTrue(ecoBridge.hasBalance(stubOffline, 100.0d));
+        assertTrue(ecoBridge.withdraw(stubOffline, 50.0d));
+        assertEquals(200.0d, ledger.get(normalPlayer));
+        assertEquals("$200.00", ecoBridge.format(200.0d));
+
+        // Verify ItemStateCodec null/empty safety
+        assertEquals("", ItemStateCodec.encodeItems(new ItemStack[36]));
+        assertEquals(36, ItemStateCodec.decodeItems("", 36).length);
+        assertTrue(ItemStateCodec.decodePotions("").isEmpty());
+
+        // Verify ModuleManager lifecycle & ConfigGui customization
+        Map<String, Boolean> moduleStates = new HashMap<>();
+        moduleStates.put("teleport", true);
+        AtomicBoolean customized = new AtomicBoolean(false);
+        NeoKernelPlugin kernelHost = new NeoKernelPlugin() {
+            @Override public FoliaUtil getFoliaUtil() { return null; }
+            @Override public I18n getI18n() { return null; }
+            @Override public DynamicCommandEngine getCommandEngine() { return null; }
+            @Override public boolean isModuleConfiguredEnabled(String id, boolean def) { return moduleStates.getOrDefault(id, def); }
+            @Override public void setModuleConfiguredEnabled(String id, boolean en) { moduleStates.put(id, en); }
+        };
+        ModuleManager mm = new ModuleManager(kernelHost);
+        mm.registerModule(new NeoModule() {
+            private boolean active = false;
+            @Override public String getId() { return "teleport"; }
+            @Override public ModuleCategory getCategory() { return ModuleCategory.TELEPORT; }
+            @Override public Material getIcon() { return Material.ENDER_PEARL; }
+            @Override public boolean isEnabled() { return active; }
+            @Override public void enable() { active = true; }
+            @Override public void disable() { active = false; }
+            @Override public void reload() {}
+            @Override public List<String> getRegisteredCommandNames() { return List.of(); }
+            @Override public void customizeConfigGui(ConfigGui gui) { customized.set(true); }
+        });
+        mm.startConfiguredModules();
+        assertEquals(1, mm.getEnabledModuleCount());
+        mm.applyConfigGuiCustomizations(ConfigGui.fromFileConfiguration("KernelTest", new YamlConfiguration(), () -> {}, () -> null));
+        assertTrue(customized.get());
+        mm.setModuleEnabled("teleport", false);
+        assertEquals(0, mm.getEnabledModuleCount());
+
+        NeoSuiteRegistry.unregisterAll(owner);
+        assertFalse(NeoSuiteRegistry.auth().isAvailable());
+        assertTrue(NeoSuiteRegistry.auth().isAuthenticated(vanishedStaff));
     }
 }

@@ -20,6 +20,10 @@ repositories {
         name = "papermc-repo"
         url = "https://repo.papermc.io/repository/maven-public/"
     }
+    maven {
+        name = "opencollab-snapshot"
+        url = "https://repo.opencollab.dev/main/"
+    }
 }
 
 dependencies {
@@ -28,6 +32,8 @@ dependencies {
     compileOnly 'org.jetbrains:annotations:26.0.2'
     compileOnly 'com.google.errorprone:error_prone_annotations:2.38.0'
     compileOnly 'org.slf4j:slf4j-api:2.0.16'
+    compileOnly 'org.geysermc.floodgate:api:2.2.5-SNAPSHOT'
+    compileOnly 'org.geysermc.cumulus:cumulus:1.1.2'
 
     // 打包 HikariCP 6.x 并排除 slf4j-api，直接复用服务端内置 SLF4J 2.x 避免类加载冲突
     implementation('com.zaxxer:HikariCP:6.3.0') {
@@ -88,6 +94,26 @@ shadowJar {
     exclude 'META-INF/*.SF'
     exclude 'META-INF/*.DSA'
     exclude 'META-INF/*.RSA'
+}
+
+tasks.register('syncDownstreamLibs') {
+    dependsOn tasks.named('shadowJar')
+    doLast {
+        def builtJar = tasks.named('shadowJar').get().archiveFile.get().asFile
+        ['NeoLogin', 'NeoCore', 'NeoWorld'].each { repoName ->
+            def targetDir = file("../${repoName}/libs")
+            if (targetDir.parentFile.exists()) {
+                targetDir.mkdirs()
+                targetDir.listFiles()?.findAll { it.name.startsWith('NeoLibrary') && it.name.endsWith('.jar') }?.each { it.delete() }
+                copy {
+                    from builtJar
+                    into targetDir
+                    rename { 'NeoLibrary.jar' }
+                }
+                println "Synced ${builtJar.name} -> ${targetDir}/NeoLibrary.jar"
+            }
+        }
+    }
 }
 
 tasks.build {

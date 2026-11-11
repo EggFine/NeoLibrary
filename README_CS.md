@@ -5,7 +5,7 @@
 
   **面向现代 Minecraft 插件开发的核心运行时与通用工具库**
 
-  [![Version](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square)](../../releases)
+  [![Version](https://img.shields.io/badge/Version-1.1.0-informational?style=flat-square)](../../releases)
   [![SpigotMC](https://img.shields.io/badge/SpigotMC-125811-orange?style=flat-square)](https://www.spigotmc.org/resources/125811/)
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
   [![Java](https://img.shields.io/badge/Java-21%2B-brightgreen?style=flat-square)](https://adoptium.net/)
@@ -19,9 +19,9 @@
 
 ## 项目概述
 
-**NeoLibrary** 是专为 Minecraft `1.21+` 服务端设计的底层运行时与插件开发工具库。作为 [blbiLibrary](https://github.com/EggFine/blbiLibrary) 的全新重构与继任版本，NeoLibrary 统一封装了跨平台任务调度（兼容 Bukkit / Spigot、Paper / Purpur 与 Folia）、基于 HikariCP 的关系型数据库连接池、覆盖 12 种语言的全局集中化多语言系统、通用游戏内可视化 GUI 配置框架、无损配置文件版本同步以及语义化版本更新检查能力。
+**NeoLibrary** 是专为 Minecraft `1.21+` 服务端设计的底层运行时、微内核底座与跨插件协同工具库。作为 [blbiLibrary](https://github.com/EggFine/blbiLibrary) 的全新重构与继任版本，NeoLibrary 统一封装了跨平台任务调度（兼容 Bukkit / Spigot、Paper / Purpur 与 Folia）、基于 HikariCP 的关系型数据库连接池、微内核模块生命周期引擎、动态 `CommandMap` 命令挂载器、覆盖 12 种语言的全局集中化多语言系统（原生支持 `&#RRGGBB` 真彩色）、通用可视化 GUI 配置与箱子菜单交互套件、生态软依赖桥接层（`BedrockBridge`、`EconomyBridge`、`UserGroupBridge`）以及 `NeoSuiteRegistry` 跨插件协同契约中心。
 
-通过将通用基础设施下沉至独立前置库，下游插件（如 [NeoLogin](https://github.com/EggFine/NeoLogin)）能够在保持代码精简的同时，无缝兼容传统单线程服务端与 Folia 区域化多线程架构。
+通过将通用基础设施与跨插件服务契约收拢至单一轻量前置库，下游插件（如 [NeoLogin](https://github.com/EggFine/NeoLogin)、[NeoCore](https://github.com/EggFine/NeoCore) 与 `NeoWorld`）能够在零硬依赖的前提下深度联动，同时无缝兼容传统单线程服务端与 Folia 区域化多线程架构。
 
 ---
 
@@ -29,15 +29,17 @@
 
 | 模块类名 | 所属包路径 | 核心职责说明 |
 | :--- | :--- | :--- |
-| `FoliaUtil` | `com.blbilink.neoLibrary.utils` | 跨平台任务调度器与安全实体传送封装（自适应 Bukkit、Paper 与 Folia） |
-| `DatabaseUtil` | `com.blbilink.neoLibrary.utils` | HikariCP 6 连接池管理、多驱动 JDBC 构建、异步查询与 SQL 事务控制 |
-| `I18n` | `com.blbilink.neoLibrary.utils` | Neo 套件全局语言统一继承、共享基础词条托管（内置 12 种语言）与占位符安全格式化 |
-| `ConfigGui` / `ConfigGuiManager` | `com.blbilink.neoLibrary.gui` | 通用游戏内可视化 GUI 配置框架（支持配置分类、上下翻页、关键字搜索、多级返回与套件切换） |
-| `ConfigUtil` | `com.blbilink.neoLibrary.utils` | 基于版本号感知的配置文件加载器与自动增量补全 |
-| `FileUtil` | `com.blbilink.neoLibrary.utils` | 配置文件与语言文件的非破坏性缺失键同步与安全读写 |
-| `UpdateUtil` | `com.blbilink.neoLibrary.utils` | 基于 Spiget API 的异步版本检查器，支持服务端版本兼容性识别 |
-| `VersionUtil` | `com.blbilink.neoLibrary.utils` | 多段语义化版本号（`SemVer`）解析与对比，支持预发布标识 |
-| `TextUtil` | `com.blbilink.neoLibrary.utils` | 控制台启动横幅构建、ASCII 矩阵字符渲染与颜色代码转换 |
+| `ModuleManager` / `AbstractNeoModule` | `com.blbilink.neoLibrary.kernel` | 微内核模块热插拔生命周期管理、监听器/定时任务自动回收及去中心化 `ConfigGui` 扩展钩子 |
+| `DynamicCommandEngine` / `NeoCommand` | `com.blbilink.neoLibrary.command` | 运行时动态注入/卸载 `CommandMap` 命令、无损恢复第三方同名命令及同步 Brigadier 补全树 |
+| `NeoSuiteRegistry` 与七大 SPI | `com.blbilink.neoLibrary.spi` | 零硬依赖跨套件协同中心（`AuthSpi`、`VisibilitySpi`、`ModerationSpi`、`EconomySpi`、`WorldAccessSpi`、`FlightCoordinatorSpi`、`InventoryProfileSpi`） |
+| `CrossServerBus` | `com.blbilink.neoLibrary.bus` | 基于 BungeeCord / Velocity 插件消息通道的跨服通信总线（自带节点防回环保护） |
+| `BedrockBridge` / `EconomyBridge` / `UserGroupBridge` | `com.blbilink.neoLibrary.bridge` | Floodgate/Cumulus 基岩版表单、`EconomySpi`/Vault 扣费及 LuckPerms/Vault 权限组统一桥接 |
+| `FoliaUtil` | `com.blbilink.neoLibrary.utils` | 全局、异步、坐标区域（`runAtLocation`）、异步区块预热、实体调度与跨平台安全传送 |
+| `DatabaseUtil` | `com.blbilink.neoLibrary.utils` | HikariCP 6 连接池（实现 `Supplier<Connection>`）、多驱动 JDBC 构建、异步查询与 SQL 事务 |
+| `I18n` & `RichTextUtil` | `com.blbilink.neoLibrary.utils` | 12 国全局语言统一继承、`&#RRGGBB` 真彩色渲染、ActionBar 与聊天可点击组件构建 |
+| `ConfigGui` / `InteractiveMenuHolder` / `ChatPromptService` | `com.blbilink.neoLibrary.gui` | 可视化配置引擎、Folia 安全箱子菜单容器、`GuiItem` 构建器与全套件统一聊天输入捕获服务 |
+| `SafeLocationEngine` 与通用工具 | `com.blbilink.neoLibrary.world` / `.utils` | 三维安全落点推演、感知隐身的 `TabCompleteUtil`、无损二进制 `ItemStateCodec`、`DurationUtil` 与 `NetUtil` |
+| `ConfigUtil` / `FileUtil` / `UpdateUtil` / `VersionUtil` | `com.blbilink.neoLibrary.utils` | 配置文件与语言包无损增量同步及 Spiget 语义化版本更新检查 |
 | `Metrics` | `com.blbilink.neoLibrary.utils` | 内置 bStats 统计客户端，兼容 Folia 启动周期 |
 
 ---
@@ -218,7 +220,7 @@ new UpdateUtil(plugin, "125811", i18n, scheduler).checkUpdate();
 
 ## 与 blbiLibrary 的特性对比
 
-| 对比维度 | NeoLibrary (`1.0.0`) | blbiLibrary（旧版） |
+| 对比维度 | NeoLibrary (`1.1.0`) | blbiLibrary（旧版） |
 | :--- | :--- | :--- |
 | **Java 运行时基线** | Java 21 LTS | Java 8 |
 | **Minecraft API 基线** | `1.21+` (`spigot-api`) | `1.16+` |
@@ -263,7 +265,7 @@ new UpdateUtil(plugin, "125811", i18n, scheduler).checkUpdate();
 
 ### 服主安装步骤
 
-1. 前往 [SpigotMC](https://www.spigotmc.org/resources/125811/) 或 [GitHub Releases](../../releases) 下载最新版本的 `NeoLibrary-1.0.0.jar`。
+1. 前往 [SpigotMC](https://www.spigotmc.org/resources/125811/) 或 [GitHub Releases](../../releases) 下载最新版本的 `NeoLibrary-1.1.0.jar`。
 2. 将 JAR 文件放入服务端的 `plugins/` 目录。
 3. 启动或重启服务器，插件将自动生成默认配置文件与语言包。
 
@@ -277,7 +279,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'com.blbilink:NeoLibrary:1.0.0'
+    compileOnly 'com.blbilink:NeoLibrary:1.1.0'
 }
 ```
 
@@ -289,7 +291,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("com.blbilink:NeoLibrary:1.0.0")
+    compileOnly("com.blbilink:NeoLibrary:1.1.0")
 }
 ```
 
@@ -307,7 +309,7 @@ dependencies {
     <dependency>
         <groupId>com.blbilink</groupId>
         <artifactId>NeoLibrary</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
         <scope>provided</scope>
     </dependency>
 </dependencies>
@@ -329,7 +331,7 @@ folia-supported: true
 
 ```yaml
 # NeoLibrary 配置文件
-version: "1.0.0"
+version: "1.1.0"
 
 # 插件消息前缀
 prefix: "&8[&fNeo&bLibrary&8] &f"
@@ -354,7 +356,7 @@ cd NeoLibrary
 ./gradlew clean test build
 ```
 
-构建完成后，包含运行时依赖的插件产物位于 `build/libs/NeoLibrary-1.0.0-SNAPSHOT.jar`。
+构建完成后，包含运行时依赖的插件产物位于 `build/libs/NeoLibrary-1.1.0-SNAPSHOT.jar`。
 
 ---
 

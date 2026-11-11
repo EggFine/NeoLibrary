@@ -382,12 +382,7 @@ public class ConfigGui {
     }
 
     private static String stripColors(String input) {
-        if (input == null) {
-            return "";
-        }
-        String colored = input.replace('&', '§');
-        String stripped = ChatColor.stripColor(colored);
-        return stripped != null ? stripped : colored;
+        return com.blbilink.neoLibrary.utils.RichTextUtil.stripColors(input);
     }
 
     /**

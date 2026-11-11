@@ -206,7 +206,7 @@ public class I18n {
      */
     public I18n(Plugin plugin, String prefix) {
         this.plugin = Objects.requireNonNull(plugin, "Plugin cannot be null");
-        this.prefix = Objects.requireNonNull(prefix, "Prefix cannot be null").replace('&', '§');
+        this.prefix = RichTextUtil.colorize(Objects.requireNonNull(prefix, "Prefix cannot be null"));
         this.followGlobalLanguage = true;
         this.languageName = NeoLibrary.getGlobalLanguage();
     }
@@ -216,7 +216,7 @@ public class I18n {
      */
     public I18n(Plugin plugin, String prefix, String languageName) {
         this.plugin = Objects.requireNonNull(plugin, "Plugin cannot be null");
-        this.prefix = Objects.requireNonNull(prefix, "Prefix cannot be null").replace('&', '§');
+        this.prefix = RichTextUtil.colorize(Objects.requireNonNull(prefix, "Prefix cannot be null"));
         this.followGlobalLanguage = false;
         this.languageName = Objects.requireNonNull(languageName, "LanguageName cannot be null");
     }
@@ -226,7 +226,7 @@ public class I18n {
      */
     public I18n(String prefix, String languageName, FileConfiguration inMemoryLanguage) {
         this.plugin = null;
-        this.prefix = Objects.requireNonNull(prefix, "Prefix cannot be null").replace('&', '§');
+        this.prefix = RichTextUtil.colorize(Objects.requireNonNull(prefix, "Prefix cannot be null"));
         this.followGlobalLanguage = false;
         this.languageName = Objects.requireNonNull(languageName, "LanguageName cannot be null");
         this.language = Objects.requireNonNull(inMemoryLanguage, "inMemoryLanguage cannot be null");
@@ -378,8 +378,7 @@ public class I18n {
      */
     public String as(String key, boolean addPrefix, Object... args) {
         String raw = resolveRawString(key);
-        String str = (raw != null ? raw : ChatColor.RED + "[I18n] Missing key: " + key)
-                .replace('&', '§');
+        String str = RichTextUtil.colorize(raw != null ? raw : ChatColor.RED + "[I18n] Missing key: " + key);
 
         String result = addPrefix ? prefix + str : str;
         return formatMessage(result, args);
@@ -420,7 +419,7 @@ public class I18n {
         if (template == null) {
             template = key;
         }
-        return formatMessage(template.replace('&', '§'), args);
+        return formatMessage(RichTextUtil.colorize(template), args);
     }
 
     /**
@@ -443,7 +442,7 @@ public class I18n {
 
         return list.stream()
                 .map(s -> {
-                    String result = s.replace('&', '§');
+                    String result = RichTextUtil.colorize(s);
                     if (addPrefix) {
                         result = prefix + result;
                     }

@@ -4,6 +4,64 @@ All notable changes to **NeoLibrary** are documented in this file. Release notes
 
 ---
 
+## [1.1.0]
+
+### 简体中文
+
+#### 微内核底座、动态命令引擎与跨服通信总线收拢
+- **通用微内核生命周期底座 (`com.blbilink.neoLibrary.kernel`)**：将下游插件重复实现的微内核体系下沉至前置库，提供 `NeoKernelPlugin`、`NeoModule`、`AbstractNeoModule<P>`、`ModuleManager` 与 `ModuleCategory`，统一托管模块依赖热启停、事件监听器与定时任务自动回收，并支持模块去中心化扩展配置面板（`NeoModule#customizeConfigGui`）。
+- **运行时动态 `CommandMap` 命令引擎 (`com.blbilink.neoLibrary.command`)**：新增 `NeoCommand` 与 `DynamicCommandEngine`，支持模块按需向 Bukkit `CommandMap` 动态注入/卸载命令、无损备份并归还被覆盖的第三方插件同名命令，以及在线实时同步 Brigadier 客户端补全树（`Server#syncCommands` / `Player#updateCommands`）。
+- **跨服插件消息通信总线 (`com.blbilink.neoLibrary.bus`)**：新增 `CrossServerBus` 与 `DefaultCrossServerBus`，封装 BungeeCord / Velocity `Forward` 二进制消息帧与防回环节点校验，为套件跨服转账提醒、礼包同步与风纪踢人/禁言提供零配置底层通道。
+
+#### 跨插件零硬依赖协同中心 (`com.blbilink.neoLibrary.spi`)
+- **`NeoSuiteRegistry` 服务注册中心**：内置线程安全且空指针安全的套件服务总线（子插件未安装或停用时自动回退至零开销默认空实现，卸载时通过 `PluginDisableEvent` 自动摘除引用），集中暴露七大跨插件契约接口：
+  - `AuthSpi` + `NeoPlayerAuthenticatedEvent`（登录会话状态查询、封禁强制吊销免密重连会话、认证完成事件通知）；
+  - `VisibilitySpi`（真隐身状态查询、反隐身观察者判定、对外可见在线人数统计）；
+  - `ModerationSpi`（审查冻结拦截判定、风纪处罚摘要、跨插件执勤管理员安全警报）；
+  - `EconomySpi`（原生高精度账本扣费、入账与格式化直连通道）；
+  - `WorldAccessSpi`（世界休眠/重置状态感知、按需懒唤醒、世界边界查询、单世界飞行规则与死亡重生路由覆盖）；
+  - `FlightCoordinatorSpi`（持久化飞行 / 限时飞行 `/tfly` 与单世界飞行规则协同恢复）；
+  - `InventoryProfileSpi`（离线 `/invsee` 与 `/ender` 跨世界组隔离容器直连读写）。
+
+#### 共享箱子菜单工具包、聊天输入捕获与软依赖桥接
+- **统一箱子 GUI 交互组件与聊天捕获 (`com.blbilink.neoLibrary.gui`)**：新增 `GuiItem`、`InteractiveMenuHolder`、`InteractiveMenuListener` 与全套件唯一 `AsyncPlayerChatEvent` 捕获中心 `ChatPromptService`（彻底消除多插件并存时的聊天输入抢占冲突）；同时将原超千行的 `ConfigGuiManager` 拆分为职责清晰的 `ConfigGuiManager` 与 `ConfigGuiRenderer`。
+- **生态软依赖桥接层 (`com.blbilink.neoLibrary.bridge`)**：统一抽离 `BedrockBridge`（Floodgate 会话检测与 Cumulus `SimpleForm` / `ModalForm` / `CustomForm` 原生表单构建）、`EconomyBridge`（优先直连 `EconomySpi`、自动回退 `Vault` 反射扣费）与 `UserGroupBridge`（LuckPerms / Vault 权限组解析）。
+- **核心工具与三维安全落点引擎扩充**：
+  - `FoliaUtil` 拆分为 `FoliaUtil` + `FoliaSchedulerAdapters`，并新增 `runAtLocation`（Folia 坐标区域调度）、`loadChunkAndRun`（异步区块预热）与 `runForOnlinePlayer`；
+  - `DatabaseUtil` 实现 `Supplier<Connection>` 接口，支持子目录相对路径 SQLite 文件解析；
+  - 新增 `RichTextUtil`（支持 `&#RRGGBB` 十六进制真彩色并接入 `I18n` 全局渲染、ActionBar、可点击聊天按钮与进度条）、`DurationUtil`、`NetUtil`（IPv4/IPv6 归一化与脱敏）、感知真隐身的 `TabCompleteUtil`、无损 GZIP+Base64 二进制编解码器 `ItemStateCodec` 以及三维危险方块检测引擎 `world/SafeLocationEngine`；
+  - 构建脚本新增 `syncDownstreamLibs` 任务，一键同步最新 API 产物至下游插件仓库。
+
+---
+
+### English
+
+#### Shared Microkernel, Dynamic Command Engine & Cross-Server Bus
+- **Unified Microkernel Lifecycle (`com.blbilink.neoLibrary.kernel`)**: Extracted the microkernel runtime into `NeoLibrary` (`NeoKernelPlugin`, `NeoModule`, `AbstractNeoModule<P>`, `ModuleManager`, `ModuleCategory`), managing module hot-toggling, automatic listener/task cleanup, and decentralized `ConfigGui` customization (`NeoModule#customizeConfigGui`).
+- **Dynamic `CommandMap` Engine (`com.blbilink.neoLibrary.command`)**: Added `NeoCommand` and `DynamicCommandEngine` for runtime command mounting/unmounting, non-destructive restoration of shadowed external plugin commands, and live Brigadier command-tree synchronization (`Server#syncCommands` / `Player#updateCommands`).
+- **Cross-Server Plugin Messaging Bus (`com.blbilink.neoLibrary.bus`)**: Added `CrossServerBus` and `DefaultCrossServerBus` over BungeeCord / Velocity `Forward` channels with origin-node loop prevention.
+
+#### Zero-Hard-Dependency Cross-Suite Synergy SPI (`com.blbilink.neoLibrary.spi`)
+- **`NeoSuiteRegistry` Service Broker**: Thread-safe, null-safe service registry with automatic `PluginDisableEvent` cleanup and zero-overhead no-op fallbacks when peer plugins are absent, exposing seven suite contracts:
+  - `AuthSpi` + `NeoPlayerAuthenticatedEvent` (authentication checks, forced session revocation upon ban, and post-auth lifecycle events);
+  - `VisibilitySpi` (True Vanish checks, viewer visibility rules, and public online player counts);
+  - `ModerationSpi` (inspection freeze checks, active punishment summaries, and cross-plugin staff security alerts);
+  - `EconomySpi` (direct high-precision economy ledger bridge);
+  - `WorldAccessSpi` (world hibernation/reset checks, lazy wake-up, border bounds, per-world flight policy, and respawn routing override);
+  - `FlightCoordinatorSpi` (persistent `/fly` & `/tfly` coordination across world flight rules);
+  - `InventoryProfileSpi` (direct offline `/invsee` & `/ender` reads/writes against isolated world-group profiles).
+
+#### Shared Chest GUI Toolkit, Unified Chat Capture & Ecosystem Bridges
+- **Interactive Menu Toolkit & Single `ChatPromptService` (`com.blbilink.neoLibrary.gui`)**: Added `GuiItem`, `InteractiveMenuHolder`, `InteractiveMenuListener`, and a suite-wide `ChatPromptService` (eliminating `AsyncPlayerChatEvent` prompt collisions across Neo plugins), and split `ConfigGuiManager` into `ConfigGuiManager` + `ConfigGuiRenderer`.
+- **Soft-Dependency Bridges (`com.blbilink.neoLibrary.bridge`)**: Centralized `BedrockBridge` (Floodgate detection + Cumulus `SimpleForm` / `ModalForm` / `CustomForm` builders), `EconomyBridge` (`EconomySpi` fast path + `Vault` reflection fallback), and `UserGroupBridge` (LuckPerms / Vault primary group resolution).
+- **Expanded Core Utilities & 3D Safety Engine**:
+  - Split `FoliaUtil` into `FoliaUtil` + `FoliaSchedulerAdapters` and added `runAtLocation`, `loadChunkAndRun`, and `runForOnlinePlayer`;
+  - Implemented `Supplier<Connection>` in `DatabaseUtil` with relative SQLite path resolution on arbitrary config sections;
+  - Added `RichTextUtil` (`&#RRGGBB` hex colors wired into `I18n`, ActionBar, clickable chat components, progress bars), `DurationUtil`, `NetUtil`, vanish-aware `TabCompleteUtil`, lossless binary `ItemStateCodec`, and `world/SafeLocationEngine`;
+  - Added `syncDownstreamLibs` Gradle task for automated downstream compilation artifact syncing.
+
+---
+
 ## [1.0.0]
 
 ### 简体中文

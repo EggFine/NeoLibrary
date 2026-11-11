@@ -3,6 +3,7 @@ package com.blbilink.neoLibrary.utils;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.MemoryConfiguration;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
@@ -19,13 +20,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 /**
  * @author EggFine
- * @version 1.0.0
+ * @version 1.1.0
  */
-public class DatabaseUtil {
+public class DatabaseUtil implements Supplier<Connection> {
 
     private final Plugin plugin;
     private final ExecutorService databaseExecutor;
@@ -137,8 +139,21 @@ public class DatabaseUtil {
      * @return 初始化成功返回 true
      */
     public boolean initialize(ConfigurationSection configSection) {
+        return initialize(configSection, "database.db");
+    }
+
+    /**
+     * 从配置文件初始化数据库连接；若配置段为 null 则自动使用默认 SQLite 文件名兜底。
+     */
+    public boolean initialize(ConfigurationSection configSection, String defaultSqliteFile) {
         try {
-            DatabaseConfig config = parseConfig(configSection);
+            ConfigurationSection effective = configSection;
+            if (effective == null) {
+                effective = new MemoryConfiguration();
+                effective.set("type", "sqlite");
+                effective.set("file", defaultSqliteFile != null ? defaultSqliteFile : "database.db");
+            }
+            DatabaseConfig config = parseConfig(effective, defaultSqliteFile);
             return initialize(config);
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to parse database configuration", e);
@@ -243,6 +258,10 @@ public class DatabaseUtil {
      * @return 解析后的 DatabaseConfig 实例
      */
     public DatabaseConfig parseConfig(ConfigurationSection section) {
+        return parseConfig(section, "database.db");
+    }
+
+    public DatabaseConfig parseConfig(ConfigurationSection section, String defaultSqliteFile) {
         Objects.requireNonNull(section, "Database configuration section cannot be null");
         DatabaseConfig config = DatabaseConfig.create();
      
@@ -261,11 +280,14 @@ public class DatabaseUtil {
               .password(section.getString("password", ""));
 
         if (config.getType() == DatabaseType.SQLITE) {
-            String filePath = section.getString("file", "database.db");
-            if (!filePath.startsWith("/") && !filePath.contains(":")) {
-                filePath = new File(plugin.getDataFolder(), filePath).getAbsolutePath();
+            String fallbackName = defaultSqliteFile != null && !defaultSqliteFile.isBlank() ? defaultSqliteFile : "database.db";
+            String filePath = section.getString("file", fallbackName);
+            File target = new File(filePath);
+            if (!target.isAbsolute()) {
+                target = new File(plugin.getDataFolder(), filePath);
             }
-            File parentDir = new File(filePath).getParentFile();
+            filePath = target.getAbsolutePath();
+            File parentDir = target.getParentFile();
             if (parentDir != null && !parentDir.exists()) {
                 parentDir.mkdirs();
             }
@@ -345,23 +367,29 @@ public class DatabaseUtil {
     
     /**
      * 从连接池获取一个数据库连接。
-     * <p><b>重要:</b> 请务必在 try-with-resources 语句中使用此方法来确保连接被正确关闭和归还。
-     * <pre>{@code
-     * try (Connection conn = databaseUtil.getConnection()) {
-     * // ... 执行数据库操作 ...
-     * } catch (SQLException e) {
-     * // ... 异常处理 ...
-     * }
-     * }</pre>
-     *
-     * @return 数据库连接
-     * @throws SQLException 如果获取连接失败或数据库未初始化
      */
     public Connection getConnection() throws SQLException {
         if (!initialized.get() || dataSource == null || dataSource.isClosed()) {
             throw new SQLException("Database is not initialized or has been closed.");
         }
         return dataSource.getConnection();
+    }
+
+    @Override
+    public Connection get() {
+        try {
+            return getConnection();
+        } catch (SQLException e) {
+            throw new RuntimeException("Unable to acquire database connection from HikariCP pool", e);
+        }
+    }
+
+    public CompletableFuture<Void> runAsync(Runnable task) {
+        return CompletableFuture.runAsync(task, databaseExecutor);
+    }
+
+    public <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier) {
+        return CompletableFuture.supplyAsync(supplier, databaseExecutor);
     }
 
     public <T> CompletableFuture<T> executeQueryAsync(String sql, Function<ResultSet, T> resultMapper, Object... params) {
