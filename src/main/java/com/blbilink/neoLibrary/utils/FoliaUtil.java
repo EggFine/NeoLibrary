@@ -2,6 +2,7 @@ package com.blbilink.neoLibrary.utils;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.entity.Entity;
 import org.bukkit.plugin.Plugin;
@@ -10,8 +11,11 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -22,7 +26,7 @@ import java.util.function.Consumer;
  * 这使得代码更清晰、可维护，并且完全解耦，易于在任何插件中使用。</p>
  *
  * @author EggFine
- * @version 2.3.0
+ * @version 2.4.0
  */
 public final class FoliaUtil {
 
@@ -36,6 +40,20 @@ public final class FoliaUtil {
     private static volatile boolean logPrinted = false;
     // BukkitSchedulerAdapter 是无状态的，可以全局共享
     private static final SchedulerAdapter BUKKIT_ADAPTER = new BukkitSchedulerAdapter();
+    // Paper / Folia Entity#teleportAsync(Location) 方法句柄缓存（纯 Spigot 下为 null）
+    private static final MethodHandle TELEPORT_ASYNC_HANDLE = resolveTeleportAsyncHandle();
+
+    private static MethodHandle resolveTeleportAsyncHandle() {
+        try {
+            return MethodHandles.publicLookup().findVirtual(
+                    Entity.class,
+                    "teleportAsync",
+                    MethodType.methodType(CompletableFuture.class, Location.class)
+            );
+        } catch (NoSuchMethodException | IllegalAccessException ignored) {
+            return null;
+        }
+    }
 
     /**
      * 构造一个新的 FoliaUtil 实例。
@@ -89,7 +107,7 @@ public final class FoliaUtil {
                     } catch (Exception e) {
                         // Folia 适配器初始化失败（例如版本不兼容）
                         if (!logPrinted && plugin != null) {
-                            plugin.getLogger().severe("[X] " + getMessage(i18n, "FoliaUtil.FoliaInitError"));
+                            plugin.getLogger().severe("[X] " + getMessage(i18n, "foliaUtil.foliaInitError"));
                             e.printStackTrace();
                         }
                         isFolia = false;
@@ -100,14 +118,14 @@ public final class FoliaUtil {
                 
                 // 输出成功日志（仅首次）
                 if (isFolia && !logPrinted && plugin != null) {
-                    plugin.getLogger().info(ChatColor.AQUA + "[OK] " + ChatColor.RESET + getMessage(i18n, "FoliaUtil.FoliaDetected"));
+                    plugin.getLogger().info(ChatColor.AQUA + "[OK] " + ChatColor.RESET + getMessage(i18n, "foliaUtil.foliaDetected"));
                     logPrinted = true;
                 }
             } else {
                 isFolia = false;
                 // 输出检测日志（仅首次）
                 if (!logPrinted && plugin != null) {
-                    plugin.getLogger().info(ChatColor.AQUA + "[OK] " + ChatColor.RESET + getMessage(i18n, "FoliaUtil.BukkitDetected"));
+                    plugin.getLogger().info(ChatColor.AQUA + "[OK] " + ChatColor.RESET + getMessage(i18n, "foliaUtil.bukkitDetected"));
                     logPrinted = true;
                 }
             }
@@ -214,7 +232,17 @@ public final class FoliaUtil {
     }
 
     /**
-     * 为特定实体调度一个任务，在主线程上执行。
+     * 为特定实体调度一个任务，立即在实体所在线程（Folia 区域线程或 Bukkit 主线程）执行。
+     *
+     * @param entity 任务关联的实体。
+     * @param task   要执行的任务。
+     */
+    public void runTaskForEntity(Entity entity, Runnable task) {
+        runTaskForEntity(entity, task, null, 0L);
+    }
+
+    /**
+     * 为特定实体调度一个任务，在实体所在区域线程或主线程上执行。
      *
      * @param entity  任务关联的实体。
      * @param task    要执行的任务。
@@ -223,6 +251,71 @@ public final class FoliaUtil {
      */
     public void runTaskForEntity(Entity entity, Runnable task, Runnable retired, long delay) {
         scheduler.runTaskForEntity(plugin, entity, task, retired, delay);
+    }
+
+    /**
+     * 跨平台安全传送实体（自动兼容 Folia / Paper 的 teleportAsync 与纯 Spigot 的主线程 teleport）。
+     *
+     * @param entity      目标实体
+     * @param destination 目标位置
+     */
+    public void teleport(Entity entity, Location destination) {
+        teleport(entity, destination, null);
+    }
+
+    /**
+     * 跨平台安全传送实体，并在传送完成后执行回调（若成功且实体有效，回调保证在实体所在线程执行）。
+     *
+     * @param entity      目标实体
+     * @param destination 目标位置
+     * @param callback    传送结果回调（可为 null）
+     */
+    @SuppressWarnings("unchecked")
+    public void teleport(Entity entity, Location destination, Consumer<Boolean> callback) {
+        if (entity == null || destination == null || destination.getWorld() == null) {
+            if (callback != null) {
+                callback.accept(false);
+            }
+            return;
+        }
+
+        if (TELEPORT_ASYNC_HANDLE != null) {
+            try {
+                CompletableFuture<Boolean> future = (CompletableFuture<Boolean>) TELEPORT_ASYNC_HANDLE.invoke(entity, destination);
+                if (callback != null) {
+                    future.whenComplete((success, throwable) -> {
+                        boolean result = throwable == null && Boolean.TRUE.equals(success);
+                        if (entity.isValid()) {
+                            runTaskForEntity(entity, () -> callback.accept(result));
+                        } else {
+                            callback.accept(false);
+                        }
+                    });
+                }
+                return;
+            } catch (Throwable ignored) {
+                // 回退至标准同步传送（非 Folia 环境）
+                if (isFolia()) {
+                    if (callback != null) {
+                        callback.accept(false);
+                    }
+                    return;
+                }
+            }
+        }
+
+        runTask(() -> {
+            if (!entity.isValid()) {
+                if (callback != null) {
+                    callback.accept(false);
+                }
+                return;
+            }
+            boolean result = entity.teleport(destination);
+            if (callback != null) {
+                callback.accept(result);
+            }
+        });
     }
 
 
@@ -451,6 +544,10 @@ public final class FoliaUtil {
 
         @Override
         public void runTaskLater(Plugin plugin, Runnable task, long delay) {
+            if (delay <= 0L) {
+                runTask(plugin, task);
+                return;
+            }
             try {
                 Consumer<Object> consumer = (scheduledTask) -> task.run();
                 runDelayed.invoke(getScheduler(getGlobalRegionScheduler), plugin, consumer, delay);
@@ -461,8 +558,12 @@ public final class FoliaUtil {
 
         @Override
         public void runTaskLaterAsync(Plugin plugin, Runnable task, long delay) {
+            if (delay <= 0L) {
+                runTaskAsync(plugin, task);
+                return;
+            }
             try {
-                long delayMillis = delay * 50;
+                long delayMillis = delay * 50L;
                 Consumer<Object> consumer = (scheduledTask) -> task.run();
                 runDelayedAsync.invoke(getScheduler(getAsyncScheduler), plugin, consumer, delayMillis, TimeUnit.MILLISECONDS);
             } catch (Throwable e) {
@@ -474,10 +575,12 @@ public final class FoliaUtil {
         public Cancellable runTaskTimerAsync(Plugin plugin, Consumer<Cancellable> task, long delay, long period) {
             try {
                 final AtomicReference<Object> foliaTaskRef = new AtomicReference<>();
+                final AtomicBoolean cancelled = new AtomicBoolean(false);
 
                 final Cancellable cancellable = new Cancellable() {
                     @Override
                     public void cancel() {
+                        cancelled.set(true);
                         Object foliaTask = foliaTaskRef.get();
                         if (foliaTask != null) {
                             try {
@@ -490,6 +593,9 @@ public final class FoliaUtil {
 
                     @Override
                     public boolean isCancelled() {
+                        if (cancelled.get()) {
+                            return true;
+                        }
                         Object foliaTask = foliaTaskRef.get();
                         if (foliaTask != null && isCancelledTask != null) {
                             try {
@@ -498,26 +604,41 @@ public final class FoliaUtil {
                                 e.printStackTrace();
                             }
                         }
-                        // 如果没有任务对象或没有 isCancelled 方法，默认返回 false (除非任务对象真的是 null，暗示未启动)
-                        // 但在 Folia 中，取消后的任务对象引用仍然存在
-                         // 如果 isCancelledTask 为空（反射失败），我们无法确切知道状态，为了安全返回 true 可能更好，或者 false。
-                        // 这里保持原逻辑：如果无法检查，假设已取消以避免死循环
-                        return foliaTask == null; 
+                        return false;
                     }
                 };
 
-                long delayMillis = delay * 50;
-                long periodMillis = period * 50;
+                // Folia AsyncScheduler#runAtFixedRate 强制要求初始延迟与周期严格 > 0
+                long safeDelayMillis = Math.max(1L, delay) * 50L;
+                long safePeriodMillis = Math.max(1L, period) * 50L;
 
                 Consumer<Object> wrappedConsumer = (scheduledTask) -> {
+                    foliaTaskRef.compareAndSet(null, scheduledTask);
+                    if (cancelled.get()) {
+                        try {
+                            cancelTask.invoke(scheduledTask);
+                        } catch (Throwable ignored) {
+                        }
+                        return;
+                    }
                     if (!cancellable.isCancelled()) {
                         task.accept(cancellable);
                     }
                 };
-                
-                Object foliaTask = runAtFixedRateAsync.invoke(getScheduler(getAsyncScheduler), plugin, wrappedConsumer, delayMillis, periodMillis, TimeUnit.MILLISECONDS);
 
-                foliaTaskRef.set(foliaTask);
+                Object foliaTask = runAtFixedRateAsync.invoke(
+                        getScheduler(getAsyncScheduler),
+                        plugin,
+                        wrappedConsumer,
+                        safeDelayMillis,
+                        safePeriodMillis,
+                        TimeUnit.MILLISECONDS
+                );
+
+                foliaTaskRef.compareAndSet(null, foliaTask);
+                if (cancelled.get() && foliaTask != null) {
+                    cancelTask.invoke(foliaTask);
+                }
                 return cancellable;
 
             } catch (Throwable e) {

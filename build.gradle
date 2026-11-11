@@ -1,17 +1,13 @@
 plugins {
     id 'java'
-    id("xyz.jpenilla.run-paper") version "2.3.1"
-    // 1. 添加 Shadow 插件，用于打包和重定位依赖
-    id 'com.gradleup.shadow' version '8.3.6'
+    id("xyz.jpenilla.run-paper") version "3.0.2"
+    id 'com.gradleup.shadow' version '8.3.9'
 }
 
 group = 'com.blbilink'
 
-def baseVersion = "1.21.8"
-// 从环境变量读取 CI 提供的构建号
-def buildNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "SNAPSHOT"
-version = "${baseVersion}.${buildNumber}"
-
+def buildNumber = System.getenv("GITHUB_RUN_NUMBER")
+version = buildNumber ? "${pluginVersion}.${buildNumber}" : "${pluginVersion}-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -20,27 +16,36 @@ repositories {
         url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
     }
     maven {
-        name = "sonatype"
-        url = "https://oss.sonatype.org/content/groups/public/"
-    }
-    maven {
-        name = "sonatype-oss-snapshots1"
+        name = "papermc-repo"
         url = "https://repo.papermc.io/repository/maven-public/"
     }
 }
 
 dependencies {
-    // Folia API 已包含 Spigot API，只需要依赖 folia-api 即可避免 capability 冲突
-    compileOnly "dev.folia:folia-api:1.21.8-R0.1-SNAPSHOT"
-    compileOnly 'com.google.errorprone:error_prone_annotations:2.28.0'
+    // 以纯 Spigot 1.21 为编译基线，确保 100% 兼容 Spigot / Paper / Purpur / Folia 1.21.x 全系服务端
+    compileOnly 'org.spigotmc:spigot-api:1.21-R0.1-SNAPSHOT'
+    compileOnly 'org.jetbrains:annotations:26.0.2'
+    compileOnly 'com.google.errorprone:error_prone_annotations:2.38.0'
+    compileOnly 'org.slf4j:slf4j-api:2.0.16'
 
-    implementation 'com.zaxxer:HikariCP:5.1.0'
+    // 打包 HikariCP 6.x 并排除 slf4j-api，直接复用服务端内置 SLF4J 2.x 避免类加载冲突
+    implementation('com.zaxxer:HikariCP:6.3.0') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+
+    testImplementation 'org.spigotmc:spigot-api:1.21-R0.1-SNAPSHOT'
+    testImplementation 'org.jetbrains:annotations:26.0.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'org.slf4j:slf4j-nop:2.0.16'
 }
 
-tasks {
-    runServer {
+test {
+    useJUnitPlatform()
+}
 
-    }
+tasks.runServer {
+    minecraftVersion("1.21.8")
 }
 
 def targetJavaVersion = 21
@@ -70,12 +75,19 @@ processResources {
     }
 }
 
-// 3. 配置 ShadowJar 任务
+tasks.named('jar') {
+    archiveClassifier.set('plain')
+    enabled = false
+}
+
 shadowJar {
     relocate 'com.zaxxer.hikari', 'com.blbilink.neoLibrary.lib.hikaricp'
     archiveClassifier.set('')
+    exclude 'META-INF/MANIFEST.MF'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
 }
-
 
 tasks.build {
     dependsOn(shadowJar)

@@ -15,17 +15,20 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.logging.Level;
 
+/**
+ * 配置文件与磁盘文件安全读写工具类。
+ */
 public final class FileUtil {
 
+    private FileUtil() {
+    }
+
     /**
-     * 从插件资源中安全地加载 YamlConfiguration。
-     * 这是一个公共方法，可被 I18n、ConfigUtil 等类复用。
-     *
-     * @param plugin       插件实例
-     * @param resourcePath 资源路径
-     * @return 加载的配置，如果失败则返回 null
+     * 从插件资源中安全加载 {@link YamlConfiguration}。
      */
     public static YamlConfiguration loadConfigFromResource(Plugin plugin, String resourcePath) {
         try (InputStream stream = plugin.getResource(resourcePath);
@@ -41,54 +44,57 @@ public final class FileUtil {
     }
 
     /**
-     * 补全配置文件（键、值、注释等）。
-     * 如果本地文件不存在，会从插件资源中创建。
+     * 补全配置文件缺失的键、默认值和注释。
      *
-     * @param plugin          插件实例
-     * @param resourceFile    资源文件路径
-     * @param notNeedSyncKeys 不需要同步的键（支持前缀匹配）
+     * @param plugin       插件实例
+     * @param resourceFile 资源文件路径
+     * @param ignoredKeys  不需要同步的键（支持前缀匹配）
      */
-    public static void completeFile(Plugin plugin, String resourceFile, String... notNeedSyncKeys) {
+    public static void completeConfigFile(Plugin plugin, String resourceFile, String... ignoredKeys) {
         plugin.getLogger().info("Starting to update configuration file: " + resourceFile);
-        List<String> ignoreKeys = Arrays.asList(notNeedSyncKeys);
+        List<String> ignoreList = Arrays.asList(ignoredKeys);
         updateConfiguration(plugin, resourceFile, (source, target) -> {
-            // 只添加缺失的键和更新注释
             source.getKeys(true).forEach(key -> {
-                // 使用 Stream API 判断是否需要忽略此键
-                boolean shouldIgnore = ignoreKeys.stream().anyMatch(ignoreKey -> key.equals(ignoreKey) || key.startsWith(ignoreKey + "."));
+                boolean shouldIgnore = ignoreList.stream()
+                        .anyMatch(ignoreKey -> key.equals(ignoreKey) || key.startsWith(ignoreKey + "."));
                 if (shouldIgnore) {
                     return;
                 }
-                
-                if (!target.contains(key)) {
+
+                // 仅对叶子节点补全缺失默认值，避免直接拷贝父级 MemorySection 导致子级 ignoredKeys 被绕过
+                if (!source.isConfigurationSection(key) && !target.contains(key)) {
                     target.set(key, source.get(key));
                 }
-                if (!Objects.equals(source.getComments(key), target.getComments(key))) {
+                if (target.contains(key) && !Objects.equals(source.getComments(key), target.getComments(key))) {
                     target.setComments(key, source.getComments(key));
                 }
             });
 
-            // 更新文件头
-            if (!Objects.equals(source.options().header(), target.options().header())) {
-                target.options().header(source.options().header());
+            if (!Objects.equals(source.options().getHeader(), target.options().getHeader())) {
+                target.options().setHeader(source.options().getHeader());
             }
         });
     }
 
     /**
-     * 强制同步语言文件，确保本地文件与插件内的文件结构一致。
-     *
-     * @param plugin       插件实例
-     * @param syncFromDefault  如果为true，则以默认语言文件 (zh_CN.yml) 为源同步键结构，否则以 resourceFile 为源
-     * @param resourceFile 目标资源文件路径
+     * @deprecated 请改用 {@link #completeConfigFile(Plugin, String, String...)}。
      */
-    public static void completeLangFile(Plugin plugin, boolean syncFromDefault, String resourceFile) {
-        // 确定源文件路径：如果 syncFromDefault 为 true，使用默认语言文件作为结构源
+    @Deprecated
+    public static void completeFile(Plugin plugin, String resourceFile, String... notNeedSyncKeys) {
+        completeConfigFile(plugin, resourceFile, notNeedSyncKeys);
+    }
+
+    /**
+     * 同步补全语言文件缺失键值与注释（保留服主已自定义的翻译文本，不覆盖已有文案）。
+     *
+     * @param plugin          插件实例
+     * @param syncFromDefault 如果为 true，则以默认语言文件 (zh_CN.yml) 为源仅补全缺失键；否则以对应语言资源文件补全缺失键并推进版本号
+     * @param resourceFile    目标语言资源路径
+     */
+    public static void completeLanguageFile(Plugin plugin, boolean syncFromDefault, String resourceFile) {
         String sourceResourcePath = syncFromDefault ? "languages/zh_CN.yml" : resourceFile;
-        
         File targetFile = new File(plugin.getDataFolder(), resourceFile);
-        
-        // 确保目标文件存在
+
         if (!targetFile.exists()) {
             try (InputStream stream = plugin.getResource(resourceFile)) {
                 if (stream != null) {
@@ -102,62 +108,55 @@ public final class FileUtil {
                 return;
             }
         }
-        
-        // 加载源配置（可能是默认语言或目标语言自身）和目标配置
+
         try (InputStream sourceStream = plugin.getResource(sourceResourcePath);
-             InputStreamReader sourceReader = new InputStreamReader(Objects.requireNonNull(sourceStream, "Source resource stream cannot be null"), StandardCharsets.UTF_8)) {
-            
+             InputStreamReader sourceReader = new InputStreamReader(
+                     Objects.requireNonNull(sourceStream, "Source resource stream cannot be null"),
+                     StandardCharsets.UTF_8)) {
+
             YamlConfiguration sourceConfig = YamlConfiguration.loadConfiguration(sourceReader);
             YamlConfiguration targetConfig = YamlConfiguration.loadConfiguration(targetFile);
 
-            // 同步键结构（只添加缺失的键，不覆盖已有值）
             sourceConfig.getKeys(true).forEach(key -> {
-                // 如果是从默认语言同步，只添加缺失的键结构，保留目标文件的值
-                if (syncFromDefault) {
-                    if (!targetConfig.contains(key)) {
-                        targetConfig.set(key, sourceConfig.get(key));
+                if ("version".equals(key)) {
+                    if (!syncFromDefault) {
+                        targetConfig.set("version", sourceConfig.get("version"));
                     }
-                } else {
-                    // 如果是从自身源同步，覆盖所有值
+                    return;
+                }
+                if (!sourceConfig.isConfigurationSection(key) && !targetConfig.contains(key)) {
                     targetConfig.set(key, sourceConfig.get(key));
                 }
-                // 同步注释
-                if (!Objects.equals(sourceConfig.getComments(key), targetConfig.getComments(key))) {
+                if (targetConfig.contains(key) && !Objects.equals(sourceConfig.getComments(key), targetConfig.getComments(key))) {
                     targetConfig.setComments(key, sourceConfig.getComments(key));
                 }
             });
 
-            // 如果不是从默认语言同步，移除本地存在但源文件中不存在的键
-            if (!syncFromDefault) {
-                targetConfig.getKeys(true).stream()
-                      .filter(key -> !sourceConfig.contains(key))
-                      .forEach(key -> targetConfig.set(key, null));
+            if (!Objects.equals(sourceConfig.options().getHeader(), targetConfig.options().getHeader())) {
+                targetConfig.options().setHeader(sourceConfig.options().getHeader());
             }
 
-            // 更新文件头
-            if (!Objects.equals(sourceConfig.options().header(), targetConfig.options().header())) {
-                targetConfig.options().header(sourceConfig.options().header());
-            }
-
-            // 保存更改
             targetConfig.save(targetFile);
-
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to complete language file: '" + resourceFile + "'", e);
         }
     }
-    
+
     /**
-     * 更新配置文件的核心逻辑。
-     *
-     * @param plugin        插件实例
-     * @param targetPath    目标文件在 data folder 中的相对路径
-     * @param updateAction  一个接受源配置和目标配置并执行更新操作的函数
+     * @deprecated 请改用 {@link #completeLanguageFile(Plugin, boolean, String)}。
      */
-    private static void updateConfiguration(Plugin plugin, String targetPath, java.util.function.BiConsumer<YamlConfiguration, YamlConfiguration> updateAction) {
+    @Deprecated
+    public static void completeLangFile(Plugin plugin, boolean syncFromDefault, String resourceFile) {
+        completeLanguageFile(plugin, syncFromDefault, resourceFile);
+    }
+
+    private static void updateConfiguration(
+            Plugin plugin,
+            String targetPath,
+            BiConsumer<YamlConfiguration, YamlConfiguration> updateAction
+    ) {
         File targetFile = new File(plugin.getDataFolder(), targetPath);
-        
-        // 确保文件存在
+
         if (!targetFile.exists()) {
             try (InputStream stream = plugin.getResource(targetPath)) {
                 if (stream != null) {
@@ -167,57 +166,48 @@ public final class FileUtil {
                     return;
                 }
             } catch (IOException e) {
-                 plugin.getLogger().log(Level.SEVERE, "Error accessing resource '" + targetPath + "'", e);
-                 return;
+                plugin.getLogger().log(Level.SEVERE, "Error accessing resource '" + targetPath + "'", e);
+                return;
             }
         }
-        
-        // 加载源配置和目标配置
+
         try (InputStream stream = plugin.getResource(targetPath);
-             InputStreamReader reader = new InputStreamReader(Objects.requireNonNull(stream, "Resource stream cannot be null"), StandardCharsets.UTF_8)) {
-            
+             InputStreamReader reader = new InputStreamReader(
+                     Objects.requireNonNull(stream, "Resource stream cannot be null"),
+                     StandardCharsets.UTF_8)) {
+
             YamlConfiguration sourceConfig = YamlConfiguration.loadConfiguration(reader);
             YamlConfiguration targetConfig = YamlConfiguration.loadConfiguration(targetFile);
 
-            // 执行更新操作
             updateAction.accept(sourceConfig, targetConfig);
-
-            // 保存更改
             targetConfig.save(targetFile);
-
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to complete file: '" + targetPath + "'", e);
         }
     }
 
-
     /**
-     * 删除一个目录及其所有内容。
-     * 使用 java.nio.file API，更加现代和可靠。
-     *
-     * @param dirFile 要删除的目录
-     * @return 如果成功删除所有文件则返回 true，否则返回 false
+     * 递归删除指定目录及其所有内容。
      */
     @CanIgnoreReturnValue
-    public static boolean deleteDir(File dirFile) {
-        if (dirFile == null || !dirFile.exists() || !dirFile.isDirectory()) {
+    public static boolean deleteDirectory(File directory) {
+        if (directory == null || !directory.exists() || !directory.isDirectory()) {
             return false;
         }
 
-        Path path = dirFile.toPath();
+        Path path = directory.toPath();
         try {
-            // 使用 AtomicBoolean 来追踪删除是否全部成功
-            java.util.concurrent.atomic.AtomicBoolean allDeleted = new java.util.concurrent.atomic.AtomicBoolean(true);
-            
-            Files.walk(path)
-                 .sorted(Comparator.reverseOrder()) // 必须反向排序，先删除文件再删除目录
-                 .forEach(p -> {
-                     try {
-                         Files.delete(p);
-                     } catch (IOException e) {
-                         allDeleted.set(false);
-                     }
-                 });
+            AtomicBoolean allDeleted = new AtomicBoolean(true);
+            try (var walk = Files.walk(path)) {
+                walk.sorted(Comparator.reverseOrder())
+                        .forEach(p -> {
+                            try {
+                                Files.delete(p);
+                            } catch (IOException e) {
+                                allDeleted.set(false);
+                            }
+                        });
+            }
             return allDeleted.get();
         } catch (IOException e) {
             return false;
@@ -225,10 +215,16 @@ public final class FileUtil {
     }
 
     /**
-     * 删除一个文件。
-     *
-     * @param file 要删除的文件
-     * @return 如果成功删除则返回 true
+     * @deprecated 请改用 {@link #deleteDirectory(File)}。
+     */
+    @Deprecated
+    @CanIgnoreReturnValue
+    public static boolean deleteDir(File dirFile) {
+        return deleteDirectory(dirFile);
+    }
+
+    /**
+     * 删除单个文件。
      */
     @CanIgnoreReturnValue
     public static boolean deleteFile(File file) {

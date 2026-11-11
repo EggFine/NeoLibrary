@@ -1,8 +1,12 @@
-version: "1.0"
+# NeoLibrary Configuration / NeoLibrary 配置文件
+version: "1.0.0"
 
-Settings:
-  # Language file name (without .yml suffix)
-  # Available: zh_CN, en_US
-  Language: zh_CN
-  # Prefix for plugin messages
-  Prefix: "&8[&bNeoLibrary&8] "
+# Message prefix / 插件消息前缀
+prefix: "&8[&fNeo&bLibrary&8] &f"
+
+# Language file name (without .yml) / 语言文件名（不含 .yml 后缀）
+# Available: zh_CN, en_US
+language: zh_CN
+
+# Check for plugin updates on startup / 启动时检查更新
+checkUpdate: true

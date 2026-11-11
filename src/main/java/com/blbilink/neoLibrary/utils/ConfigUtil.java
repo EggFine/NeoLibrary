@@ -71,7 +71,7 @@ public class ConfigUtil {
         // 3. 从 jar 中加载最新的配置文件以进行版本比较（使用公共方法）
         FileConfiguration sourceConfig = FileUtil.loadConfigFromResource(plugin, configName);
         if (sourceConfig == null) {
-            plugin.getLogger().warning(String.format("[%s] %s", configName, getMessage("ConfigUtil.NotInJar", configName)));
+            plugin.getLogger().warning(String.format("[%s] %s", configName, getMessage("configUtil.notInJar", configName)));
             return;
         }
 
@@ -79,21 +79,21 @@ public class ConfigUtil {
         String localVersion = config.getString("version", "0.0");
         String sourceVersion = sourceConfig.getString("version", "0.0");
 
-        plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("ConfigUtil.LocalVersion", localVersion, sourceVersion)));
+        plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("configUtil.localVersion", localVersion, sourceVersion)));
 
-        if (YmlUtil.isVersionNewer(sourceVersion, localVersion)) {
-            plugin.getLogger().warning(String.format("[%s] %s", configName, getMessage("ConfigUtil.NewVersionDetected")));
+        if (VersionUtil.isVersionNewer(sourceVersion, localVersion)) {
+            plugin.getLogger().warning(String.format("[%s] %s", configName, getMessage("configUtil.newVersionDetected")));
             
             // 使用 FileUtil 来补全文件，忽略版本号本身，因为它会被手动设置
-            FileUtil.completeFile(plugin, configName, "version");
+            FileUtil.completeConfigFile(plugin, configName, "version");
             
             // 重新加载配置以应用更改
             this.config = YamlConfiguration.loadConfiguration(configFile);
             this.config.set("version", sourceVersion);
             save(); // 保存更新后的版本号
-            plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("ConfigUtil.UpdateComplete", sourceVersion)));
+            plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("configUtil.updateComplete", sourceVersion)));
         } else {
-             plugin.getLogger().info(String.format("[%s] " + ChatColor.AQUA + "[OK] %s" + ChatColor.RESET, configName, getMessage("ConfigUtil.UpToDate")));
+             plugin.getLogger().info(String.format("[%s] " + ChatColor.AQUA + "[OK] %s" + ChatColor.RESET, configName, getMessage("configUtil.upToDate")));
         }
     }
 
@@ -105,10 +105,14 @@ public class ConfigUtil {
             // 使用 try-with-resources 确保流被关闭
             try (InputStream stream = plugin.getResource(configName)) {
                 if (stream != null) {
-                    plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("ConfigUtil.NotExist")));
+                    plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("configUtil.notExist")));
                     plugin.saveResource(configName, false);
                 } else {
-                    plugin.getLogger().warning(String.format("[%s] %s", configName, getMessage("ConfigUtil.NotInResource", configName)));
+                    plugin.getLogger().warning(String.format("[%s] %s", configName, getMessage("configUtil.notInResource", configName)));
+                    File parentDir = configFile.getParentFile();
+                    if (parentDir != null && !parentDir.exists()) {
+                        parentDir.mkdirs();
+                    }
                     // 即使资源不存在，也创建一个空文件，避免后续操作出错
                     configFile.createNewFile();
                 }
@@ -135,7 +139,7 @@ public class ConfigUtil {
      * 从磁盘重新加载配置文件。
      */
     public void reload() {
-        plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("ConfigUtil.Reloading")));
+        plugin.getLogger().info(String.format("[%s] %s", configName, getMessage("configUtil.reloading")));
         loadAndSync();
     }
 

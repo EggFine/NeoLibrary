@@ -2,5 +2,7 @@ name: NeoLibrary
 version: '${version}'
 main: com.blbilink.neoLibrary.NeoLibrary
 api-version: '1.21'
+author: EggFine[blbilink]
+description: The Next Generation Utility Library for Minecraft Plugins
 folia-supported: true
 load: STARTUP

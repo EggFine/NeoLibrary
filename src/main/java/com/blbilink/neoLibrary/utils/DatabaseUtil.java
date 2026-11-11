@@ -72,7 +72,7 @@ public class DatabaseUtil {
         private long idleTimeout = DEFAULT_IDLE_TIMEOUT;
         private long maxLifetime = DEFAULT_MAX_LIFETIME;
         
-        private boolean useSSL = false;
+        private boolean useSsl = false;
         private boolean allowPublicKeyRetrieval = false;
 
         private DatabaseConfig() {}
@@ -91,10 +91,11 @@ public class DatabaseUtil {
         public DatabaseConfig connectionTimeout(long connectionTimeout) { this.connectionTimeout = connectionTimeout; return this; }
         public DatabaseConfig idleTimeout(long idleTimeout) { this.idleTimeout = idleTimeout; return this; }
         public DatabaseConfig maxLifetime(long maxLifetime) { this.maxLifetime = maxLifetime; return this; }
-        public DatabaseConfig useSSL(boolean useSSL) { this.useSSL = useSSL; return this; }
+        public DatabaseConfig useSsl(boolean useSsl) { this.useSsl = useSsl; return this; }
+        @Deprecated
+        public DatabaseConfig useSSL(boolean useSSL) { return useSsl(useSSL); }
         public DatabaseConfig allowPublicKeyRetrieval(boolean allowPublicKeyRetrieval) { this.allowPublicKeyRetrieval = allowPublicKeyRetrieval; return this; }
         
-        // ... (所有 getter 方法保持不变)
         public DatabaseType getType() { return type; }
         public String getHost() { return host; }
         public int getPort() { return port; }
@@ -107,7 +108,9 @@ public class DatabaseUtil {
         public long getConnectionTimeout() { return connectionTimeout; }
         public long getIdleTimeout() { return idleTimeout; }
         public long getMaxLifetime() { return maxLifetime; }
-        public boolean isUseSSL() { return useSSL; }
+        public boolean isUseSsl() { return useSsl; }
+        @Deprecated
+        public boolean isUseSSL() { return useSsl; }
         public boolean isAllowPublicKeyRetrieval() { return allowPublicKeyRetrieval; }
     }
     
@@ -135,7 +138,7 @@ public class DatabaseUtil {
      */
     public boolean initialize(ConfigurationSection configSection) {
         try {
-            DatabaseConfig config = loadConfigFromSection(configSection);
+            DatabaseConfig config = parseConfig(configSection);
             return initialize(config);
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to parse database configuration", e);
@@ -204,6 +207,15 @@ public class DatabaseUtil {
                     break;
             }
 
+            // 确保 SQLite 数据库文件的父目录已创建
+            if (dbConfig.getType() == DatabaseType.SQLITE && dbConfig.getFilePath() != null) {
+                File dbFile = new File(dbConfig.getFilePath());
+                File parentDir = dbFile.getParentFile();
+                if (parentDir != null && !parentDir.exists()) {
+                    parentDir.mkdirs();
+                }
+            }
+
             this.dataSource = new HikariDataSource(hikariConfig);
             this.initialized.set(true);
             plugin.getLogger().info("Database connection pool initialized successfully! Type: " + dbConfig.getType().name());
@@ -211,7 +223,11 @@ public class DatabaseUtil {
             return true;
         } catch (ClassNotFoundException e) {
             plugin.getLogger().severe("Database driver not found: " + dbConfig.getType().getDriverClass());
-            plugin.getLogger().severe("Please add the required database driver to your server's lib folder or shade it into your plugin.");
+            if (dbConfig.getType() == DatabaseType.MARIADB) {
+                plugin.getLogger().severe("Tip: Spigot/Paper bundles the MySQL driver by default (protocol-compatible with MariaDB). Either add mariadb-java-client to your server libraries or switch database.type to 'mysql'.");
+            } else {
+                plugin.getLogger().severe("Please add the required JDBC driver jar to your server's libraries/plugins folder.");
+            }
             return false;
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to initialize database connection pool", e);
@@ -220,7 +236,14 @@ public class DatabaseUtil {
         }
     }
 
-    private DatabaseConfig loadConfigFromSection(ConfigurationSection section) {
+    /**
+     * 从 ConfigurationSection 解析数据库配置（优先读取标准 camelCase 键名，并向后兼容旧版 kebab-case 键名）。
+     *
+     * @param section 数据库配置节点
+     * @return 解析后的 DatabaseConfig 实例
+     */
+    public DatabaseConfig parseConfig(ConfigurationSection section) {
+        Objects.requireNonNull(section, "Database configuration section cannot be null");
         DatabaseConfig config = DatabaseConfig.create();
      
         String typeStr = section.getString("type", "SQLITE").toUpperCase();
@@ -242,25 +265,41 @@ public class DatabaseUtil {
             if (!filePath.startsWith("/") && !filePath.contains(":")) {
                 filePath = new File(plugin.getDataFolder(), filePath).getAbsolutePath();
             }
+            File parentDir = new File(filePath).getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
             config.filePath(filePath);
         }
 
         ConfigurationSection poolSection = section.getConfigurationSection("pool");
         if (poolSection != null) {
-            config.maxPoolSize(poolSection.getInt("max-size", DEFAULT_MAX_POOL_SIZE))
-                  .minIdle(poolSection.getInt("min-idle", DEFAULT_MIN_IDLE))
-                  .connectionTimeout(poolSection.getLong("connection-timeout", DEFAULT_CONNECTION_TIMEOUT))
-                  .idleTimeout(poolSection.getLong("idle-timeout", DEFAULT_IDLE_TIMEOUT))
-                  .maxLifetime(poolSection.getLong("max-lifetime", DEFAULT_MAX_LIFETIME));
+            config.maxPoolSize(getIntWithFallback(poolSection, "maxSize", "max-size", DEFAULT_MAX_POOL_SIZE))
+                  .minIdle(getIntWithFallback(poolSection, "minIdle", "min-idle", DEFAULT_MIN_IDLE))
+                  .connectionTimeout(getLongWithFallback(poolSection, "connectionTimeout", "connection-timeout", DEFAULT_CONNECTION_TIMEOUT))
+                  .idleTimeout(getLongWithFallback(poolSection, "idleTimeout", "idle-timeout", DEFAULT_IDLE_TIMEOUT))
+                  .maxLifetime(getLongWithFallback(poolSection, "maxLifetime", "max-lifetime", DEFAULT_MAX_LIFETIME));
         }
         
-        config.useSSL(section.getBoolean("use-ssl", false))
-              .allowPublicKeyRetrieval(section.getBoolean("allow-public-key-retrieval", false));
+        config.useSsl(getBooleanWithFallback(section, "useSsl", "use-ssl", false))
+              .allowPublicKeyRetrieval(getBooleanWithFallback(section, "allowPublicKeyRetrieval", "allow-public-key-retrieval", false));
         
         return config;
     }
 
-    private int getDefaultPort(DatabaseType type) {
+    private static int getIntWithFallback(ConfigurationSection section, String primaryKey, String legacyKey, int defaultValue) {
+        return section.contains(primaryKey) ? section.getInt(primaryKey, defaultValue) : section.getInt(legacyKey, defaultValue);
+    }
+
+    private static long getLongWithFallback(ConfigurationSection section, String primaryKey, String legacyKey, long defaultValue) {
+        return section.contains(primaryKey) ? section.getLong(primaryKey, defaultValue) : section.getLong(legacyKey, defaultValue);
+    }
+
+    private static boolean getBooleanWithFallback(ConfigurationSection section, String primaryKey, String legacyKey, boolean defaultValue) {
+        return section.contains(primaryKey) ? section.getBoolean(primaryKey, defaultValue) : section.getBoolean(legacyKey, defaultValue);
+    }
+
+    private static int getDefaultPort(DatabaseType type) {
         return switch (type) {
             case MYSQL, MARIADB -> 3306;
             case POSTGRESQL -> 5432;
@@ -268,25 +307,40 @@ public class DatabaseUtil {
         };
     }
 
-    private String buildJdbcUrl(DatabaseConfig config) {
+    /**
+     * 按数据库驱动规范构建专属的 JDBC 连接字符串。
+     */
+    public String buildJdbcUrl(DatabaseConfig config) {
         if (config.getType() == DatabaseType.SQLITE) {
             return config.getType().getUrlPrefix() + config.getFilePath();
         }
-        
+
         StringBuilder url = new StringBuilder(config.getType().getUrlPrefix());
         url.append(config.getHost()).append(":").append(config.getPort()).append("/").append(config.getDatabase());
-        
+
         List<String> params = new ArrayList<>();
-        params.add("useUnicode=true");
-        params.add("characterEncoding=utf8");
-        
-        if (config.getType() == DatabaseType.MYSQL || config.getType() == DatabaseType.MARIADB) {
-            params.add("useSSL=" + config.isUseSSL());
-            params.add("allowPublicKeyRetrieval=" + config.isAllowPublicKeyRetrieval());
-            params.add("serverTimezone=UTC");
+        switch (config.getType()) {
+            case MYSQL -> {
+                params.add("useUnicode=true");
+                params.add("characterEncoding=utf8");
+                params.add("useSSL=" + config.isUseSsl());
+                params.add("allowPublicKeyRetrieval=" + config.isAllowPublicKeyRetrieval());
+                params.add("serverTimezone=UTC");
+            }
+            case MARIADB -> {
+                // MariaDB Connector/J 3.x 使用 sslMode 替代旧版 useSSL
+                params.add("sslMode=" + (config.isUseSsl() ? "trust" : "disable"));
+                params.add("allowPublicKeyRetrieval=" + config.isAllowPublicKeyRetrieval());
+            }
+            case POSTGRESQL -> {
+                params.add("ssl=" + config.isUseSsl());
+                params.add("sslmode=" + (config.isUseSsl() ? "require" : "disable"));
+            }
+            case SQLITE -> {
+            }
         }
-        
-        return url.append("?").append(String.join("&", params)).toString();
+
+        return params.isEmpty() ? url.toString() : url.append("?").append(String.join("&", params)).toString();
     }
     
     /**

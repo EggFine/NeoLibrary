@@ -1,39 +1,39 @@
-version: "1.2"
+version: "1.0.0"
 
 # General
-loadedLanguage: "Loaded language file: {0}"
-Language: "English (US)"
+languageName: "English (US)"
+loadedLanguage: "Loaded language file: %s"
 
 # Logo
-Logo:
-  Status: "Loading..."
-  SubTitle: "The Next Generation blbiLibrary\nSpigotMC: https://www.spigotmc.org/resources/125811/"
+logo:
+  status: "Loading..."
+  subTitle: "The Next Generation blbiLibrary\nSpigotMC: https://www.spigotmc.org/resources/125811/"
 
 # Update Checker
-UpdateChecker:
-  Found: "&aA new version is available: &e{0} &7(Current: {1})"
-  Download: "&aDownload it at: &e{0}"
-  Error: "&cFailed to check for updates: {0}"
-  UpToDate: "&aYou are running the latest version."
-  FailedConnection: "&cCould not connect to update server: {0}"
-  ParseError: "&cCould not parse version from server version string, update check skipped."
-  ParseMCError: "&cCould not parse Minecraft version: {0}"
-  InvalidVersion: "&cCurrent plugin version format is invalid, cannot check for updates."
-  NoVersions: "&eCould not parse any version information from API response."
+updateChecker:
+  found: "&aA new version is available: &e%s &7(Current: %s)"
+  download: "&aDownload it at: &e%s"
+  error: "&cFailed to check for updates: %s"
+  upToDate: "&aYou are running the latest version."
+  failedConnection: "&cCould not connect to update server: %s"
+  parseError: "&cCould not parse version from server version string, update check skipped."
+  parseMcError: "&cCould not parse Minecraft version: %s"
+  invalidVersion: "&cCurrent plugin version format is invalid, cannot check for updates."
+  noVersions: "&eCould not parse any version information from API response."
 
 # ConfigUtil
-ConfigUtil:
-  NotInJar: "&eConfig file '{0}' not found in plugin jar, skipping version check."
-  LocalVersion: "&7Current config version: {0}, Latest config version: {1}"
-  NewVersionDetected: "&aNew config version detected! Automatically updating configuration..."
-  UpdateComplete: "&aConfig update complete! New version is {0}."
-  UpToDate: "&aYou are using the latest config version."
-  NotExist: "&7Config file does not exist, exporting default config from plugin resources."
-  NotInResource: "&eResource file '{0}' not found in plugin jar, creating an empty file."
-  Reloading: "&7Reloading configuration file..."
+configUtil:
+  notInJar: "&eConfig file '%s' not found in plugin jar, skipping version check."
+  localVersion: "&7Current config version: %s, Latest config version: %s"
+  newVersionDetected: "&aNew config version detected! Automatically updating configuration..."
+  updateComplete: "&aConfig update complete! New version is %s."
+  upToDate: "&aYou are using the latest config version."
+  notExist: "&7Config file does not exist, exporting default config from plugin resources."
+  notInResource: "&eResource file '%s' not found in plugin jar, creating an empty file."
+  reloading: "&7Reloading configuration file..."
 
 # FoliaUtil
-FoliaUtil:
-  FoliaDetected: "&aDetected Folia-compatible core, using Folia scheduler"
-  BukkitDetected: "&aDetected standard Bukkit core, using standard scheduler"
-  FoliaInitError: "&cDetected Folia environment, but failed to initialize Folia scheduler! Possibly version incompatible. Falling back to standard Bukkit scheduler."
+foliaUtil:
+  foliaDetected: "&aDetected Folia-compatible core, using Folia scheduler"
+  bukkitDetected: "&aDetected standard Bukkit core, using standard scheduler"
+  foliaInitError: "&cDetected Folia environment, but failed to initialize Folia scheduler! Possibly version incompatible. Falling back to standard Bukkit scheduler."

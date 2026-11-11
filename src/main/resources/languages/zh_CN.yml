@@ -1,39 +1,39 @@
-version: "1.2"
+version: "1.0.0"
 
 # General
-loadedLanguage: "已加载语言文件: {0}"
-Language: "简体中文 (中国)"
+languageName: "简体中文 (中国)"
+loadedLanguage: "已加载语言文件: %s"
 
 # Logo
-Logo:
-  Status: "加载中..."
-  SubTitle: "下一代 blbiLibrary\nSpigotMC: https://www.spigotmc.org/resources/125811/"
+logo:
+  status: "加载中..."
+  subTitle: "下一代 blbiLibrary\nSpigotMC: https://www.spigotmc.org/resources/125811/"
 
 # Update Checker
-UpdateChecker:
-  Found: "&a发现新版本: &e{0} &7(当前版本: {1})"
-  Download: "&a下载地址: &e{0}"
-  Error: "&c检查更新失败: {0}"
-  UpToDate: "&a当前已是最新版本。"
-  FailedConnection: "&c无法连接到更新服务器: {0}"
-  ParseError: "&c无法从服务器版本字符串中提取Minecraft版本, 更新检查跳过。"
-  ParseMCError: "&c无法解析服务器Minecraft版本: {0}"
-  InvalidVersion: "&c当前插件版本号格式不正确，无法检查更新。"
-  NoVersions: "&e未能从API响应中解析出任何版本信息。"
+updateChecker:
+  found: "&a发现新版本: &e%s &7(当前版本: %s)"
+  download: "&a下载地址: &e%s"
+  error: "&c检查更新失败: %s"
+  upToDate: "&a当前已是最新版本。"
+  failedConnection: "&c无法连接到更新服务器: %s"
+  parseError: "&c无法从服务器版本字符串中提取 Minecraft 版本，更新检查已跳过。"
+  parseMcError: "&c无法解析服务器 Minecraft 版本: %s"
+  invalidVersion: "&c当前插件版本号格式不正确，无法检查更新。"
+  noVersions: "&e未能从 API 响应中解析出任何版本信息。"
 
 # ConfigUtil
-ConfigUtil:
-  NotInJar: "&e配置文件 '{0}' 在插件 jar 中不存在，跳过版本检查。"
-  LocalVersion: "&7当前配置文件版本: {0}, 最新配置文件版本: {1}"
-  NewVersionDetected: "&a检测到配置文件有新版本！正在自动更新配置..."
-  UpdateComplete: "&a配置文件更新完成！新版本是 {0}。"
-  UpToDate: "&a您当前正在使用的配置文件是最新版本。"
-  NotExist: "&7配置文件不存在，正在从插件资源中导出默认配置文件。"
-  NotInResource: "&e资源文件 '{0}' 在插件 jar 中不存在，创建一个空文件。"
-  Reloading: "&7正在重新加载配置文件..."
+configUtil:
+  notInJar: "&e配置文件 '%s' 在插件 jar 中不存在，跳过版本检查。"
+  localVersion: "&7当前配置文件版本: %s, 最新配置文件版本: %s"
+  newVersionDetected: "&a检测到配置文件有新版本！正在自动更新配置..."
+  updateComplete: "&a配置文件更新完成！新版本是 %s。"
+  upToDate: "&a您当前正在使用的配置文件是最新版本。"
+  notExist: "&7配置文件不存在，正在从插件资源中导出默认配置文件。"
+  notInResource: "&e资源文件 '%s' 在插件 jar 中不存在，创建一个空文件。"
+  reloading: "&7正在重新加载配置文件..."
 
 # FoliaUtil
-FoliaUtil:
-  FoliaDetected: "&a检测到兼容 Folia 核心，正在使用 Folia 调度器"
-  BukkitDetected: "&a检测到标准 Bukkit 核心，正在使用标准调度器"
-  FoliaInitError: "&c检测到 Folia 环境，但初始化 Folia 调度器时发生错误！可能是版本不兼容。将回退至标准 Bukkit 调度器。"
+foliaUtil:
+  foliaDetected: "&a检测到兼容 Folia 核心，正在使用 Folia 调度器"
+  bukkitDetected: "&a检测到标准 Bukkit 核心，正在使用标准调度器"
+  foliaInitError: "&c检测到 Folia 环境，但初始化 Folia 调度器时发生错误！可能是版本不兼容，将回退至标准 Bukkit 调度器。"
