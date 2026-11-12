@@ -4,6 +4,22 @@ All notable changes to **NeoLibrary** are documented in this file. Release notes
 
 ---
 
+## [1.2.0]
+
+### 简体中文
+
+- **全套件聊天与空岛协同契约扩展 (`com.blbilink.neoLibrary.spi`)**：在 `NeoSuiteRegistry` 中新增 `ChatSpi`（拉黑屏蔽查询 `isIgnoring`、自定义昵称/头衔读取、系统离线邮件投递 `sendSystemMail`）与 `IslandSpi`（空岛世界判定、坐标/玩家岛屿摘要查询、建筑/进入空间权限校验、岛屿专属飞行许可及战队成员拓扑获取），并在 `ModuleCategory` 中扩充 `SOCIAL`、`ISLAND`、`PROGRESSION` 标准分类，支撑 `NeoChat` 与 `NeoIsland` 同全套插件零硬依赖深度联动。
+- **多段 RGB 渐变、彩虹字与高精度货币工具 (`com.blbilink.neoLibrary.utils`)**：`RichTextUtil` 新增 `<gradient:#RRGGBB:#RRGGBB>...</gradient>` 多控制点线性色彩插值、`<rainbow>...</rainbow>` 彩虹字及 `buildInteractiveText` 悬浮/点击富文本组件构建器（零 NMS，兼容 Spigot/Paper/Folia）；新增 `FixedPointMoneyUtil` 提供 `10^-4` 定点整数货币解析与紧凑单位（`K`/`M`/`B`/`T`）格式化；`syncDownstreamLibs` 构建任务同步覆盖 `NeoChat` 与 `NeoIsland`。
+
+---
+
+### English
+
+- **Chat & Island Cross-Suite SPI Contracts (`com.blbilink.neoLibrary.spi`)**: Registered `ChatSpi` (`isIgnoring`, custom nickname/tag lookup, offline `sendSystemMail`) and `IslandSpi` (island world detection, spatial island lookup, build/entry protection checks, island flight permission, and team member resolution) in `NeoSuiteRegistry`, and expanded `ModuleCategory` with `SOCIAL`, `ISLAND`, and `PROGRESSION` for zero-hard-dependency synergy with `NeoChat` and `NeoIsland`.
+- **Multi-Stop RGB Gradients, Rainbow Tags & Fixed-Point Currency Utility (`com.blbilink.neoLibrary.utils`)**: Enhanced `RichTextUtil` with `<gradient:#RRGGBB:#RRGGBB>...</gradient>` multi-stop interpolation, `<rainbow>...</rainbow>`, and `buildInteractiveText` hover/click component builders; added `FixedPointMoneyUtil` (`10^-4` minor-unit arithmetic and `K`/`M`/`B`/`T` compact formatting); extended `syncDownstreamLibs` to `NeoChat` and `NeoIsland`.
+
+---
+
 ## [1.1.0]
 
 ### 简体中文

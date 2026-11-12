@@ -5,7 +5,7 @@
 
   **Core Runtime & Developer Utility Library for Modern Minecraft Plugins**
 
-  [![Version](https://img.shields.io/badge/Version-1.1.0-informational?style=flat-square)](../../releases)
+  [![Version](https://img.shields.io/badge/Version-1.2.0-informational?style=flat-square)](../../releases)
   [![SpigotMC](https://img.shields.io/badge/SpigotMC-125811-orange?style=flat-square)](https://www.spigotmc.org/resources/125811/)
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
   [![Java](https://img.shields.io/badge/Java-21%2B-brightgreen?style=flat-square)](https://adoptium.net/)
@@ -19,9 +19,9 @@
 
 ## Overview
 
-**NeoLibrary** is the foundational runtime, microkernel, and cross-plugin synergy framework for Minecraft `1.21+` plugin development. Engineered as the ground-up successor to [blbiLibrary](https://github.com/EggFine/blbiLibrary), it provides unified cross-platform task scheduling (Bukkit, Paper, and Folia), HikariCP-backed relational database pooling, a hot-swappable module microkernel, dynamic `CommandMap` registration, centralized suite-wide localization across 12 built-in languages (`&#RRGGBB` hex-ready), a universal in-game GUI configuration & chest menu toolkit, soft-dependency bridges (`BedrockBridge`, `EconomyBridge`, `UserGroupBridge`), and the `NeoSuiteRegistry` cross-plugin SPI broker.
+**NeoLibrary** is the foundational runtime, microkernel, and cross-plugin synergy framework for Minecraft `1.21+` plugin development. Engineered as the ground-up successor to [blbiLibrary](https://github.com/EggFine/blbiLibrary), it provides unified cross-platform task scheduling (Bukkit, Paper, and Folia), HikariCP-backed relational database pooling, a hot-swappable module microkernel, dynamic `CommandMap` registration, centralized suite-wide localization across 12 built-in languages (`&#RRGGBB` hex, `<gradient>`, and `<rainbow>` ready), a universal in-game GUI configuration & chest menu toolkit, soft-dependency bridges (`BedrockBridge`, `EconomyBridge`, `UserGroupBridge`), and the `NeoSuiteRegistry` nine-domain cross-plugin SPI broker.
 
-By centralizing infrastructure concerns into a single lightweight dependency, NeoLibrary allows downstream plugins—such as [NeoLogin](https://github.com/EggFine/NeoLogin), [NeoCore](https://github.com/EggFine/NeoCore), and `NeoWorld`—to collaborate seamlessly without hard dependencies while remaining concise, thread-safe, and portable across Spigot, Paper, Purpur, and Folia.
+By centralizing infrastructure concerns into a single lightweight dependency, NeoLibrary allows downstream plugins—such as [NeoLogin](https://github.com/EggFine/NeoLogin), [NeoCore](https://github.com/EggFine/NeoCore), `NeoWorld`, `NeoChat`, and `NeoIsland`—to collaborate seamlessly without hard dependencies while remaining concise, thread-safe, and portable across Spigot, Paper, Purpur, and Folia.
 
 ---
 
@@ -31,14 +31,14 @@ By centralizing infrastructure concerns into a single lightweight dependency, Ne
 | :--- | :--- | :--- |
 | `ModuleManager` / `AbstractNeoModule` | `com.blbilink.neoLibrary.kernel` | Hot-swappable microkernel lifecycle, listener/task tracking, and decentralized `ConfigGui` hooks |
 | `DynamicCommandEngine` / `NeoCommand` | `com.blbilink.neoLibrary.command` | Live `CommandMap` injection, shadowed command restoration, and Brigadier command-tree sync |
-| `NeoSuiteRegistry` & SPI Contracts | `com.blbilink.neoLibrary.spi` | Zero-hard-dependency cross-suite synergy (`AuthSpi`, `VisibilitySpi`, `ModerationSpi`, `EconomySpi`, `WorldAccessSpi`, `FlightCoordinatorSpi`, `InventoryProfileSpi`) |
+| `NeoSuiteRegistry` & 9 SPI Contracts | `com.blbilink.neoLibrary.spi` | Zero-hard-dependency cross-suite synergy (`AuthSpi`, `VisibilitySpi`, `ModerationSpi`, `EconomySpi`, `WorldAccessSpi`, `FlightCoordinatorSpi`, `InventoryProfileSpi`, `ChatSpi`, `IslandSpi`) |
 | `CrossServerBus` | `com.blbilink.neoLibrary.bus` | BungeeCord / Velocity plugin-messaging bus with origin-node loop prevention |
 | `BedrockBridge` / `EconomyBridge` / `UserGroupBridge` | `com.blbilink.neoLibrary.bridge` | Soft-isolated bridges for Floodgate/Cumulus forms, `EconomySpi`/Vault fees, and LuckPerms/Vault groups |
 | `FoliaUtil` | `com.blbilink.neoLibrary.utils` | Unified global, async, location-region (`runAtLocation`), chunk-preload, and entity scheduling + async teleportation |
 | `DatabaseUtil` | `com.blbilink.neoLibrary.utils` | HikariCP 6 connection pool (`Supplier<Connection>`), multi-driver JDBC builder, async queries, and SQL transactions |
-| `I18n` & `RichTextUtil` | `com.blbilink.neoLibrary.utils` | Centralized 12-locale inheritance, `&#RRGGBB` hex colors, ActionBar, and clickable chat components |
+| `I18n` & `RichTextUtil` | `com.blbilink.neoLibrary.utils` | Centralized 12-locale inheritance, `&#RRGGBB` / `<gradient>` / `<rainbow>`, ActionBar, and interactive chat components |
 | `ConfigGui` / `InteractiveMenuHolder` / `ChatPromptService` | `com.blbilink.neoLibrary.gui` | Universal visual `ConfigGui` editor, Folia-safe chest menu holder, `GuiItem` builder, and unified chat input capture |
-| `SafeLocationEngine` & Core Codecs | `com.blbilink.neoLibrary.world` / `.utils` | 3D hazard-aware landing resolver, vanish-aware `TabCompleteUtil`, lossless `ItemStateCodec`, `DurationUtil`, and `NetUtil` |
+| `SafeLocationEngine` & Core Codecs | `com.blbilink.neoLibrary.world` / `.utils` | 3D hazard-aware landing resolver, vanish-aware `TabCompleteUtil`, lossless `ItemStateCodec`, `FixedPointMoneyUtil`, `DurationUtil`, and `NetUtil` |
 | `ConfigUtil` / `FileUtil` / `UpdateUtil` / `VersionUtil` | `com.blbilink.neoLibrary.utils` | Non-destructive YAML schema/locale completion and Spiget SemVer update checking |
 | `Metrics` | `com.blbilink.neoLibrary.utils` | Embedded bStats telemetry client with Folia-safe initialization |
 

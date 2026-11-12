@@ -464,4 +464,54 @@ class NeoLibraryCoreTest {
         assertFalse(NeoSuiteRegistry.auth().isAvailable());
         assertTrue(NeoSuiteRegistry.auth().isAuthenticated(vanishedStaff));
     }
+
+    @Test
+    void testGradientRainbowFixedPointMoneyAndChatIslandSpi() {
+        String grad = RichTextUtil.colorize("<gradient:#FF0000:#00FF00>Hello</gradient>");
+        assertTrue(grad.contains("§x§f§f§0§0§0§0H"));
+        assertTrue(grad.contains("§x§0§0§f§f§0§0o"));
+        assertEquals("Hello", RichTextUtil.stripColors("<gradient:#FF0000:#00FF00>Hello</gradient>"));
+
+        String rainbow = RichTextUtil.colorize("<rainbow>NeoSuite</rainbow>");
+        assertTrue(rainbow.contains("§x"));
+        assertEquals("NeoSuite", RichTextUtil.stripColors(rainbow));
+
+        long minor = com.blbilink.neoLibrary.utils.FixedPointMoneyUtil.fromMajor(1250.5d);
+        assertEquals(12_505_000L, minor);
+        assertEquals("$1,250.50", com.blbilink.neoLibrary.utils.FixedPointMoneyUtil.formatMinor(minor, "$", 2));
+        assertEquals("$1.25K", com.blbilink.neoLibrary.utils.FixedPointMoneyUtil.formatCompact(minor, "$"));
+        assertEquals(25_000_000_000L, com.blbilink.neoLibrary.utils.FixedPointMoneyUtil.parseMinor("2.5M").orElse(-1L));
+
+        Plugin owner = createStubPlugin(new File("."));
+        UUID a = UUID.randomUUID();
+        UUID b = UUID.randomUUID();
+
+        NeoSuiteRegistry.registerChat(owner, new com.blbilink.neoLibrary.spi.ChatSpi() {
+            @Override public boolean isAvailable() { return true; }
+            @Override public boolean isIgnoring(UUID receiverUuid, UUID senderUuid) {
+                return receiverUuid.equals(a) && senderUuid.equals(b);
+            }
+            @Override public String getDisplayName(UUID playerUuid, String fallbackName) {
+                return "[VIP]" + fallbackName;
+            }
+        });
+
+        NeoSuiteRegistry.registerIsland(owner, new com.blbilink.neoLibrary.spi.IslandSpi() {
+            @Override public boolean isAvailable() { return true; }
+            @Override public boolean isIslandWorld(String worldName) { return "neo_skyblock".equals(worldName); }
+            @Override public Set<UUID> getTeamMembers(UUID playerUuid) { return Set.of(a, b); }
+        });
+
+        assertTrue(NeoSuiteRegistry.chat().isAvailable());
+        assertTrue(NeoSuiteRegistry.chat().isIgnoring(a, b));
+        assertFalse(NeoSuiteRegistry.chat().isIgnoring(b, a));
+        assertEquals("[VIP]Steve", NeoSuiteRegistry.chat().getDisplayName(a, "Steve"));
+        assertTrue(NeoSuiteRegistry.island().isAvailable());
+        assertTrue(NeoSuiteRegistry.island().isIslandWorld("neo_skyblock"));
+        assertEquals(2, NeoSuiteRegistry.island().getTeamMembers(a).size());
+
+        NeoSuiteRegistry.unregisterAll(owner);
+        assertFalse(NeoSuiteRegistry.chat().isAvailable());
+        assertFalse(NeoSuiteRegistry.island().isAvailable());
+    }
 }

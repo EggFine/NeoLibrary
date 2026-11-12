@@ -5,8 +5,8 @@ import org.bukkit.plugin.Plugin;
 /**
  * Neo 系列套件运行时服务协调中心（线程安全、零编译期相互依赖）。
  * <p>
- * 任何下游插件（{@code NeoLogin}、{@code NeoCore}、{@code NeoWorld}）既可单独安装运行（未注册的服务自动回退至安全空实现 {@code NOOP}），
- * 又可在同服组合部署时通过本注册中心实现深度无感联动。
+ * 任何下游插件（{@code NeoLogin}、{@code NeoCore}、{@code NeoWorld}、{@code NeoChat}、{@code NeoIsland}）
+ * 既可单独安装运行（未注册的服务自动回退至安全空实现 {@code NOOP}），又可在同服组合部署时通过本注册中心实现深度无感联动。
  * </p>
  */
 public final class NeoSuiteRegistry {
@@ -20,6 +20,8 @@ public final class NeoSuiteRegistry {
     private static volatile Holder<WorldAccessSpi> worldAccessHolder;
     private static volatile Holder<FlightCoordinatorSpi> flightHolder;
     private static volatile Holder<InventoryProfileSpi> inventoryProfileHolder;
+    private static volatile Holder<ChatSpi> chatHolder;
+    private static volatile Holder<IslandSpi> islandHolder;
 
     private NeoSuiteRegistry() {
     }
@@ -54,6 +56,14 @@ public final class NeoSuiteRegistry {
 
     public static void registerInventoryProfiles(Plugin owner, InventoryProfileSpi service) {
         inventoryProfileHolder = service != null ? new Holder<>(ownerOf(owner), service) : null;
+    }
+
+    public static void registerChat(Plugin owner, ChatSpi service) {
+        chatHolder = service != null ? new Holder<>(ownerOf(owner), service) : null;
+    }
+
+    public static void registerIsland(Plugin owner, IslandSpi service) {
+        islandHolder = service != null ? new Holder<>(ownerOf(owner), service) : null;
     }
 
     public static AuthSpi auth() {
@@ -91,6 +101,16 @@ public final class NeoSuiteRegistry {
         return h != null ? h.service() : InventoryProfileSpi.NOOP;
     }
 
+    public static ChatSpi chat() {
+        Holder<ChatSpi> h = chatHolder;
+        return h != null ? h.service() : ChatSpi.NOOP;
+    }
+
+    public static IslandSpi island() {
+        Holder<IslandSpi> h = islandHolder;
+        return h != null ? h.service() : IslandSpi.NOOP;
+    }
+
     /**
      * 注销指定插件注册的所有套件协同服务（在下游插件停用时自动调用）。
      */
@@ -120,6 +140,12 @@ public final class NeoSuiteRegistry {
         if (inventoryProfileHolder != null && inventoryProfileHolder.ownerName().equals(name)) {
             inventoryProfileHolder = null;
         }
+        if (chatHolder != null && chatHolder.ownerName().equals(name)) {
+            chatHolder = null;
+        }
+        if (islandHolder != null && islandHolder.ownerName().equals(name)) {
+            islandHolder = null;
+        }
     }
 
     public static synchronized void resetAll() {
@@ -130,5 +156,7 @@ public final class NeoSuiteRegistry {
         worldAccessHolder = null;
         flightHolder = null;
         inventoryProfileHolder = null;
+        chatHolder = null;
+        islandHolder = null;
     }
 }

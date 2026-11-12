@@ -5,7 +5,7 @@
 
   **面向现代 Minecraft 插件开发的核心运行时与通用工具库**
 
-  [![Version](https://img.shields.io/badge/Version-1.1.0-informational?style=flat-square)](../../releases)
+  [![Version](https://img.shields.io/badge/Version-1.2.0-informational?style=flat-square)](../../releases)
   [![SpigotMC](https://img.shields.io/badge/SpigotMC-125811-orange?style=flat-square)](https://www.spigotmc.org/resources/125811/)
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
   [![Java](https://img.shields.io/badge/Java-21%2B-brightgreen?style=flat-square)](https://adoptium.net/)
@@ -19,9 +19,9 @@
 
 ## 项目概述
 
-**NeoLibrary** 是专为 Minecraft `1.21+` 服务端设计的底层运行时、微内核底座与跨插件协同工具库。作为 [blbiLibrary](https://github.com/EggFine/blbiLibrary) 的全新重构与继任版本，NeoLibrary 统一封装了跨平台任务调度（兼容 Bukkit / Spigot、Paper / Purpur 与 Folia）、基于 HikariCP 的关系型数据库连接池、微内核模块生命周期引擎、动态 `CommandMap` 命令挂载器、覆盖 12 种语言的全局集中化多语言系统（原生支持 `&#RRGGBB` 真彩色）、通用可视化 GUI 配置与箱子菜单交互套件、生态软依赖桥接层（`BedrockBridge`、`EconomyBridge`、`UserGroupBridge`）以及 `NeoSuiteRegistry` 跨插件协同契约中心。
+**NeoLibrary** 是专为 Minecraft `1.21+` 服务端设计的底层运行时、微内核底座与跨插件协同工具库。作为 [blbiLibrary](https://github.com/EggFine/blbiLibrary) 的全新重构与继任版本，NeoLibrary 统一封装了跨平台任务调度（兼容 Bukkit / Spigot、Paper / Purpur 与 Folia）、基于 HikariCP 的关系型数据库连接池、微内核模块生命周期引擎、动态 `CommandMap` 命令挂载器、覆盖 12 种语言的全局集中化多语言系统（原生支持 `&#RRGGBB` 真彩色、`<gradient>` 渐变与 `<rainbow>` 彩虹字）、通用可视化 GUI 配置与箱子菜单交互套件、生态软依赖桥接层（`BedrockBridge`、`EconomyBridge`、`UserGroupBridge`）以及 `NeoSuiteRegistry` 九大跨插件协同契约中心。
 
-通过将通用基础设施与跨插件服务契约收拢至单一轻量前置库，下游插件（如 [NeoLogin](https://github.com/EggFine/NeoLogin)、[NeoCore](https://github.com/EggFine/NeoCore) 与 `NeoWorld`）能够在零硬依赖的前提下深度联动，同时无缝兼容传统单线程服务端与 Folia 区域化多线程架构。
+通过将通用基础设施与跨插件服务契约收拢至单一轻量前置库，下游插件（如 [NeoLogin](https://github.com/EggFine/NeoLogin)、[NeoCore](https://github.com/EggFine/NeoCore)、`NeoWorld`、`NeoChat` 与 `NeoIsland`）能够在零硬依赖的前提下深度联动，同时无缝兼容传统单线程服务端与 Folia 区域化多线程架构。
 
 ---
 
@@ -31,14 +31,14 @@
 | :--- | :--- | :--- |
 | `ModuleManager` / `AbstractNeoModule` | `com.blbilink.neoLibrary.kernel` | 微内核模块热插拔生命周期管理、监听器/定时任务自动回收及去中心化 `ConfigGui` 扩展钩子 |
 | `DynamicCommandEngine` / `NeoCommand` | `com.blbilink.neoLibrary.command` | 运行时动态注入/卸载 `CommandMap` 命令、无损恢复第三方同名命令及同步 Brigadier 补全树 |
-| `NeoSuiteRegistry` 与七大 SPI | `com.blbilink.neoLibrary.spi` | 零硬依赖跨套件协同中心（`AuthSpi`、`VisibilitySpi`、`ModerationSpi`、`EconomySpi`、`WorldAccessSpi`、`FlightCoordinatorSpi`、`InventoryProfileSpi`） |
+| `NeoSuiteRegistry` 与九大 SPI | `com.blbilink.neoLibrary.spi` | 零硬依赖跨套件协同中心（`AuthSpi`、`VisibilitySpi`、`ModerationSpi`、`EconomySpi`、`WorldAccessSpi`、`FlightCoordinatorSpi`、`InventoryProfileSpi`、`ChatSpi`、`IslandSpi`） |
 | `CrossServerBus` | `com.blbilink.neoLibrary.bus` | 基于 BungeeCord / Velocity 插件消息通道的跨服通信总线（自带节点防回环保护） |
 | `BedrockBridge` / `EconomyBridge` / `UserGroupBridge` | `com.blbilink.neoLibrary.bridge` | Floodgate/Cumulus 基岩版表单、`EconomySpi`/Vault 扣费及 LuckPerms/Vault 权限组统一桥接 |
 | `FoliaUtil` | `com.blbilink.neoLibrary.utils` | 全局、异步、坐标区域（`runAtLocation`）、异步区块预热、实体调度与跨平台安全传送 |
 | `DatabaseUtil` | `com.blbilink.neoLibrary.utils` | HikariCP 6 连接池（实现 `Supplier<Connection>`）、多驱动 JDBC 构建、异步查询与 SQL 事务 |
-| `I18n` & `RichTextUtil` | `com.blbilink.neoLibrary.utils` | 12 国全局语言统一继承、`&#RRGGBB` 真彩色渲染、ActionBar 与聊天可点击组件构建 |
+| `I18n` & `RichTextUtil` | `com.blbilink.neoLibrary.utils` | 12 国全局语言统一继承、`&#RRGGBB` / `<gradient>` / `<rainbow>` 渲染、ActionBar 与聊天交互组件 |
 | `ConfigGui` / `InteractiveMenuHolder` / `ChatPromptService` | `com.blbilink.neoLibrary.gui` | 可视化配置引擎、Folia 安全箱子菜单容器、`GuiItem` 构建器与全套件统一聊天输入捕获服务 |
-| `SafeLocationEngine` 与通用工具 | `com.blbilink.neoLibrary.world` / `.utils` | 三维安全落点推演、感知隐身的 `TabCompleteUtil`、无损二进制 `ItemStateCodec`、`DurationUtil` 与 `NetUtil` |
+| `SafeLocationEngine` 与通用工具 | `com.blbilink.neoLibrary.world` / `.utils` | 三维安全落点推演、感知隐身的 `TabCompleteUtil`、无损 `ItemStateCodec`、`FixedPointMoneyUtil`、`DurationUtil` 与 `NetUtil` |
 | `ConfigUtil` / `FileUtil` / `UpdateUtil` / `VersionUtil` | `com.blbilink.neoLibrary.utils` | 配置文件与语言包无损增量同步及 Spiget 语义化版本更新检查 |
 | `Metrics` | `com.blbilink.neoLibrary.utils` | 内置 bStats 统计客户端，兼容 Folia 启动周期 |
 

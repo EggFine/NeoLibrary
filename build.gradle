@@ -100,7 +100,7 @@ tasks.register('syncDownstreamLibs') {
     dependsOn tasks.named('shadowJar')
     doLast {
         def builtJar = tasks.named('shadowJar').get().archiveFile.get().asFile
-        ['NeoLogin', 'NeoCore', 'NeoWorld'].each { repoName ->
+        ['NeoLogin', 'NeoCore', 'NeoWorld', 'NeoChat', 'NeoIsland'].each { repoName ->
             def targetDir = file("../${repoName}/libs")
             if (targetDir.parentFile.exists()) {
                 targetDir.mkdirs()
